@@ -87,6 +87,9 @@ void shader_program::setBool(std::string_view name, bool value) const {
     glUniform1i(glGetUniformLocation(id, name.data()), (int) value);
 }
 
+#include <iostream>
+
 shader_program::~shader_program() {
+    std::cout << id << " " << "kek" << std::endl;
     glDeleteProgram(id);
 }

@@ -7,9 +7,12 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include "shader.h"
+#include "texture.h"
 
 #include <iostream>
 #include <cmath>
+
+
 
 void framebuffer_size_callback(GLFWwindow *, int width, int height) {
     glViewport(0, 0, width, height);
@@ -187,46 +190,15 @@ tl::expected<shader_program, std::string> setup_shaders() {
 
 struct cube {
     GLuint VAO = 0;
-    GLuint texture0 = 0;
-    GLuint texture1 = 0;
+    /*GLuint texture0 = 0;
+    GLuint texture1 = 0;*/
     shader_program program;
 };
-
-tl::expected<GLuint, std::string> create_texture(const char *filename, GLenum format) {
-    GLuint texture;
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    int width, height, nrChannels;
-    stbi_set_flip_vertically_on_load(true);
-    uint8_t *data = stbi_load(filename, &width, &height, &nrChannels, 0);
-    if (data) {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, format, GL_UNSIGNED_BYTE, data);
-        glGenerateMipmap(GL_TEXTURE_2D);
-    } else {
-        return tl::make_unexpected<std::string>("Failed to load image");
-    }
-    stbi_image_free(data);
-
-    return texture;
-}
-
 tl::expected<cube, std::string> setup_cube() {
     // VAO
     GLuint VAO;
     glGenVertexArrays(1, &VAO);
     glBindVertexArray(VAO);
-
-//    // EBO
-//    GLuint EBO;
-//    glGenBuffers(1, &EBO);
-//    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-//    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
     // VBO
     GLuint VBO;
@@ -242,20 +214,18 @@ tl::expected<cube, std::string> setup_cube() {
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *) (3 * sizeof(float)));
     glEnableVertexAttribArray(1);
 
-    GLuint texture0;
-    if (auto result = create_texture("assets/container.jpg", GL_RGB))
-        texture0 = result.value();
+    Texture2d texture0, texture1;
+
+    if (auto result = texture0.load_texture("assets/container.jpg", GL_RGB)) {}
     else return tl::make_unexpected(std::move(result.error()));
 
-    GLuint texture1;
-    if (auto result = create_texture("assets/awesomeface.png", GL_RGBA))
-        texture1 = result.value();
+    if (auto result = texture1.load_texture("assets/awesomeface.png", GL_RGBA)) {}
     else return tl::make_unexpected(std::move(result.error()));
 
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, texture0);
+    texture0.bind();
     glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, texture1);
+    texture1.bind();
 
     glm::mat4 trans = glm::mat4(1.0f);
     trans = glm::rotate(trans, glm::radians(90.0f), glm::vec3(0.0, 0.0, 1.0));
@@ -269,7 +239,7 @@ tl::expected<cube, std::string> setup_cube() {
                 program.setInt("texture1", 1);
 
                 return cube{
-                        VAO, texture0, texture1, std::move(program)
+                        VAO, std::move(program)
                 };
             });
 }
@@ -280,7 +250,6 @@ void render_cube(const cube &tri, glm::vec3 pos) {
 
     glm::mat4 model = glm::mat4(1.0f);
     model = glm::translate(model, pos);
-//    model = glm::rotate(model, (float)glfwGetTime() * glm::radians(50.0f), glm::vec3(0.5f, 1.0f, 0.0f));
 
     glm::mat4 view;
     view = glm::lookAt(camera_pos, camera_pos + camera_front, camera_up);

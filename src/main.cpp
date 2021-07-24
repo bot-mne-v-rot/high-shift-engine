@@ -8,20 +8,16 @@
 
 #include "shader.h"
 #include "texture.h"
+#include "camera.h"
 
 #include <iostream>
 #include <cmath>
 
-
+Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
 
 void framebuffer_size_callback(GLFWwindow *, int width, int height) {
     glViewport(0, 0, width, height);
 }
-
-glm::vec3 camera_pos = glm::vec3(0.0f, 0.0f, 3.0f);
-glm::vec3 camera_rot = glm::vec3(-90.0f, 0.0f, 0.0f); // yaw, pitch, roll
-glm::vec3 camera_front = glm::vec3(0.0f, 0.0f, -1.0f);
-glm::vec3 camera_up = glm::vec3(0.0f, 1.0f, 0.0f);
 
 float delta_time = 0.0f;    // Time between current frame and last frame
 float last_frame = 0.0f; // Time of last frame
@@ -30,43 +26,15 @@ void process_input(GLFWwindow *window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
-    auto w = (float) (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS);
-    auto a = (float) (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS);
-    auto s = (float) (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS);
-    auto d = (float) (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS);
-    auto space = (float) (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS);
-    auto shift = (float) (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS);
-
-    const float camera_speed = 3.0f; // adjust accordingly
-    float up = space - shift, right = d - a, front = w - s;
-
-    auto &yaw = camera_rot.x;
-    auto &pitch = camera_rot.y;
-    auto &roll = camera_rot.z;
-
-    glm::vec3 look_dir;
-    look_dir.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-    look_dir.y = sin(glm::radians(pitch));
-    look_dir.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-
-    camera_front = look_dir;
-
-    glm::mat3 basis;
-    basis[0] = camera_up;
-    basis[1] = glm::normalize(glm::cross(camera_front, camera_up));
-    basis[2] = camera_front;
-
-    glm::vec3 local_move_dir(up, right, front);
-    if (local_move_dir != glm::vec3(0, 0, 0))
-        local_move_dir = glm::normalize(local_move_dir);
-
-    glm::vec3 move_dir = basis * local_move_dir;
-
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) camera.ProcessKeyboard(FORWARD, delta_time);
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) camera.ProcessKeyboard(LEFT, delta_time);
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) camera.ProcessKeyboard(BACKWARD, delta_time);
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) camera.ProcessKeyboard(RIGHT, delta_time);
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) camera.ProcessKeyboard(UP, delta_time);
+    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) camera.ProcessKeyboard(DOWN, delta_time);
     float current_frame = glfwGetTime();
     delta_time = current_frame - last_frame;
     last_frame = current_frame;
-
-    camera_pos += move_dir * camera_speed * delta_time;
 }
 
 
@@ -79,33 +47,11 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos) {
         first_mouse = false;
     }
 
-    auto &yaw = camera_rot.x;
-    auto &pitch = camera_rot.y;
-    auto &roll = camera_rot.z;
-
     float xoffset = xpos - lastX;
     float yoffset = lastY - ypos;
+    camera.ProcessMouseMovement(xoffset, yoffset);
     lastX = xpos;
     lastY = ypos;
-
-    float sensitivity = 0.1f;
-    xoffset *= sensitivity;
-    yoffset *= sensitivity;
-
-    yaw += xoffset;
-    pitch += yoffset;
-
-    if (pitch > 89.0f)
-        pitch = 89.0f;
-    if (pitch < -89.0f)
-        pitch = -89.0f;
-
-    glm::vec3 look_dir;
-    look_dir.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-    look_dir.y = sin(glm::radians(pitch));
-    look_dir.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-
-    camera_front = look_dir;
 }
 
 
@@ -190,8 +136,6 @@ tl::expected<shader_program, std::string> setup_shaders() {
 
 struct cube {
     GLuint VAO = 0;
-    /*GLuint texture0 = 0;
-    GLuint texture1 = 0;*/
     shader_program program;
 };
 tl::expected<cube, std::string> setup_cube() {
@@ -214,18 +158,17 @@ tl::expected<cube, std::string> setup_cube() {
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *) (3 * sizeof(float)));
     glEnableVertexAttribArray(1);
 
-    Texture2d texture0, texture1;
-
+    glActiveTexture(GL_TEXTURE0);
+    Texture2d texture0(GL_MIRRORED_REPEAT, GL_MIRRORED_REPEAT, GL_LINEAR_MIPMAP_LINEAR, GL_LINEAR);
     if (auto result = texture0.load_texture("assets/container.jpg", GL_RGB)) {}
     else return tl::make_unexpected(std::move(result.error()));
 
+    glActiveTexture(GL_TEXTURE1);
+    Texture2d texture1;
     if (auto result = texture1.load_texture("assets/awesomeface.png", GL_RGBA)) {}
     else return tl::make_unexpected(std::move(result.error()));
 
-    glActiveTexture(GL_TEXTURE0);
-    texture0.bind();
-    glActiveTexture(GL_TEXTURE1);
-    texture1.bind();
+
 
     glm::mat4 trans = glm::mat4(1.0f);
     trans = glm::rotate(trans, glm::radians(90.0f), glm::vec3(0.0, 0.0, 1.0));
@@ -251,8 +194,7 @@ void render_cube(const cube &tri, glm::vec3 pos) {
     glm::mat4 model = glm::mat4(1.0f);
     model = glm::translate(model, pos);
 
-    glm::mat4 view;
-    view = glm::lookAt(camera_pos, camera_pos + camera_front, camera_up);
+    glm::mat4 view = camera.GetViewMatrix();
 
     glm::mat4 projection;
     projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
@@ -291,7 +233,7 @@ int main(int argc, char *argv[]) {
 
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetCursorPosCallback(window, mouse_callback);
-
+    stbi_set_flip_vertically_on_load(true);
     glEnable(GL_DEPTH_TEST);
 
     cube tri;

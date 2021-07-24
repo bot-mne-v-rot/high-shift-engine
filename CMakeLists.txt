@@ -7,7 +7,7 @@ set(LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib")
 
 # Target
 include_directories(include)
-add_executable(${PROJECT_NAME} src/main.cpp src/shader.cpp include/texture.h include/camera.h)
+add_executable(${PROJECT_NAME} src/main.cpp src/shader.cpp include/texture.h include/camera.h src/texture.cpp src/camera.cpp)
 
 # GLFW
 set(GLFW_DIR "${LIB_DIR}/glfw")

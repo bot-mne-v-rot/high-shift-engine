@@ -90,6 +90,5 @@ void shader_program::setBool(std::string_view name, bool value) const {
 #include <iostream>
 
 shader_program::~shader_program() {
-    std::cout << id << " " << "kek" << std::endl;
     glDeleteProgram(id);
 }

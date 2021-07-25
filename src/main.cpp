@@ -7,6 +7,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include "shader.h"
+#include "ecs/ecs.h"
 
 #include <iostream>
 #include <cmath>

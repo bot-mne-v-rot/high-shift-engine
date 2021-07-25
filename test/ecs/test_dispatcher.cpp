@@ -40,10 +40,11 @@ TEST_SUITE("dispatcher") {
         ecs::Dispatcher<SomeSystem, OtherSystem> dispatcher;
         ecs::World &world = dispatcher.get_world();
 
+        // Order of execution is not guaranteed.
         dispatcher.update();
         dispatcher.update();
 
-        CHECK(world.has<SomeRes>());
-        CHECK(world.has<OtherRes>());
+        CHECK(world.get<SomeRes>().a == 1);
+        CHECK(world.get<OtherRes>().a == 2);
     }
 }

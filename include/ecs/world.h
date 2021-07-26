@@ -5,6 +5,7 @@
 #include <array>
 #include <cassert>
 #include <memory>
+#include <concepts>
 
 namespace ecs {
     namespace detail {
@@ -19,6 +20,12 @@ namespace ecs {
             return id;
         }
     }
+
+    template<typename R>
+    concept Resource = requires {
+        requires std::same_as<R, std::remove_cvref_t<R>>;
+        requires std::is_default_constructible_v<R>;
+    };
 
     /**
      * Move-only container for resources. Uses type as a key.
@@ -40,7 +47,7 @@ namespace ecs {
          * @tparam R Resource type to store.
          * @param ptr std::unique_ptr represents transferring of the ownership.
          */
-        template<typename R>
+        template<Resource R>
         void insert(std::unique_ptr<R> ptr) {
             static auto id = detail::get_resource_id<R>();
             presence.set(id);
@@ -52,7 +59,7 @@ namespace ecs {
          * If you create the same resource twice, it is overwritten.
          * @tparam R Resource type to store
          */
-        template<typename R, typename ...Args>
+        template<Resource R, typename ...Args>
         void emplace(Args &&...args) {
             static auto id = detail::get_resource_id<R>();
             presence.set(id);
@@ -64,7 +71,7 @@ namespace ecs {
          * Checks that resource exists with <cassert> which is disabled in Release build.
          * @tparam R Resource type to erase
          */
-        template<typename R>
+        template<Resource R>
         void erase() {
             static auto id = detail::get_resource_id<R>();
             assert(presence[id]);
@@ -78,7 +85,7 @@ namespace ecs {
          * Checks that resource exists with <cassert> which is disabled in Release build.
          * @tparam R Resource type to get
          */
-        template<class R>
+        template<Resource R>
         const R &get() const {
             static auto id = detail::get_resource_id<R>();
             assert(presence[id]);
@@ -90,7 +97,7 @@ namespace ecs {
          * Checks that resource exists with <cassert> which is disabled in Release build.
          * @tparam R Resource type to get
          */
-        template<class R>
+        template<Resource R>
         R &get() {
             static auto id = detail::get_resource_id<R>();
             assert(presence[id]);
@@ -101,7 +108,7 @@ namespace ecs {
          * Checks if Resource is present.
          * @tparam R Resource type to get
          */
-        template<class R>
+        template<Resource R>
         bool has() {
             static auto id = detail::get_resource_id<R>();
             return presence[id];

@@ -6,12 +6,10 @@
 namespace {
     struct SomeComponent {
         using Storage = ecs::VecStorage<SomeComponent>;
-        ecs::Id id;
     };
 
     struct OtherComponent {
         using Storage = ecs::VecStorage<OtherComponent>;
-        ecs::Id id;
     };
 
     class ExampleSystem {

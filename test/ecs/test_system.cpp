@@ -1,17 +1,16 @@
 #include "doctest.h"
 
 #include "ecs/system.h"
-
-#include <vector>
+#include "ecs/storages/vec_storage.h"
 
 namespace {
     struct SomeComponent {
-        using Storage = std::vector<SomeComponent>;
+        using Storage = ecs::VecStorage<SomeComponent>;
         ecs::Id id;
     };
 
     struct OtherComponent {
-        using Storage = std::vector<OtherComponent>;
+        using Storage = ecs::VecStorage<OtherComponent>;
         ecs::Id id;
     };
 

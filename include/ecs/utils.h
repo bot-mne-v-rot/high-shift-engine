@@ -13,18 +13,6 @@ namespace ecs::detail {
             return;
         }
     }
-
-    template<typename>
-    struct all_params_are_lvalue_refs : public std::false_type {
-    };
-
-    template<typename Ret, typename This, typename ...Args>
-    struct all_params_are_lvalue_refs<Ret (This::*)(Args...)>
-            : public std::bool_constant<(std::is_lvalue_reference_v<Args> && ...)> {
-    };
-
-    template<typename F>
-    constexpr bool all_params_are_lvalue_refs_v = all_params_are_lvalue_refs<F>::value;
 }
 
 #endif //HIGH_SHIFT_UTILS_H

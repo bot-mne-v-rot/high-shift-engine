@@ -8,6 +8,21 @@
 #include <concepts>
 
 namespace ecs {
+    namespace detail {
+        template<typename>
+        struct all_params_are_lvalue_refs_to_resources : public std::false_type {
+        };
+
+        template<typename Ret, typename This, typename ...Args>
+        struct all_params_are_lvalue_refs_to_resources<Ret (This::*)(Args...)>
+                : public std::bool_constant<(std::is_lvalue_reference_v<Args> && ...) &&
+                                            (Resource<std::remove_cvref_t<Args>> && ...)> {
+        };
+
+        template<typename F>
+        constexpr bool all_params_are_lvalue_refs_to_resources_v =
+                all_params_are_lvalue_refs_to_resources<F>::value;
+    }
     /**
      * The only thing system should provide is `update` method.
      * You can list any resources you wish to access by either
@@ -29,7 +44,7 @@ namespace ecs {
     concept System = requires(S sys) {
         requires std::is_default_constructible_v<S>;
         &S::update; // has update method
-        requires detail::all_params_are_lvalue_refs_v<decltype(&S::update)>;
+        requires detail::all_params_are_lvalue_refs_to_resources_v<decltype(&S::update)>;
     };
 }
 

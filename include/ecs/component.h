@@ -41,7 +41,7 @@ namespace ecs {
     concept Component = requires(C c) {
         typename C::Storage;
         requires detail::Container<typename C::Storage>;
-        { c.id } -> std::same_as<Id>;
+        requires std::same_as<decltype(c.id), Id>;
     };
 
     template<typename S>

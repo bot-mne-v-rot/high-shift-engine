@@ -20,7 +20,7 @@ namespace ecs::detail {
 
     template<typename Ret, typename This, typename ...Args>
     struct all_params_are_lvalue_refs<Ret (This::*)(Args...)>
-            : public std::bool_constant<(... && std::is_lvalue_reference_v<Args>)> {
+            : public std::bool_constant<(std::is_lvalue_reference_v<Args> && ...)> {
     };
 
     template<typename F>

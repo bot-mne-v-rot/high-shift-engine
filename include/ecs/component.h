@@ -14,14 +14,14 @@ namespace ecs {
         template<class ContainerType>
         concept Container = requires(ContainerType a, const ContainerType b)
         {
-//        requires std::regular<ContainerType>;
-//        requires std::swappable<ContainerType>;
-//        requires std::destructible<typename ContainerType::value_type>;
+//            requires std::regular<ContainerType>;
+//            requires std::swappable<ContainerType>;
+//            requires std::destructible<typename ContainerType::value_type>;
             requires std::same_as<typename ContainerType::reference, typename ContainerType::value_type &>;
             requires std::same_as<typename ContainerType::const_reference, const typename ContainerType::value_type &>;
-//        requires std::forward_iterator<typename ContainerType::iterator>;
-//        requires std::forward_iterator<typename ContainerType::const_iterator>;
-//        requires std::signed_integral<typename ContainerType::difference_type>;
+//            requires std::forward_iterator<typename ContainerType::iterator>;
+//            requires std::forward_iterator<typename ContainerType::const_iterator>;
+//            requires std::signed_integral<typename ContainerType::difference_type>;
             requires std::same_as<typename ContainerType::difference_type, typename std::iterator_traits<typename
             ContainerType::iterator>::difference_type>;
             requires std::same_as<typename ContainerType::difference_type, typename std::iterator_traits<typename

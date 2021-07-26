@@ -21,7 +21,8 @@ namespace ecs {
     }
 
     /**
-     * Container for resources.
+     * Move-only container for resources. Uses type as a key.
+     * Stores Resources on heap with exclusive ownership.
      */
     class World {
     public:
@@ -33,46 +34,76 @@ namespace ecs {
         World(World &&) = default;
         World &operator=(World &&) = default;
 
-        template<typename Res>
-        void insert(std::unique_ptr<Res> ptr) {
-            static auto id = detail::get_resource_id<Res>();
+        /**
+         * Stores Resource by ptr to it.
+         * If you insert the same resource twice, it is overwritten.
+         * @tparam R Resource type to store.
+         * @param ptr std::unique_ptr represents transferring of the ownership.
+         */
+        template<typename R>
+        void insert(std::unique_ptr<R> ptr) {
+            static auto id = detail::get_resource_id<R>();
             presence.set(id);
             resources[id] = std::move(ptr);
         }
 
-        template<typename Res, typename ...Args>
+        /**
+         * Creates Resource in-place.
+         * If you create the same resource twice, it is overwritten.
+         * @tparam R Resource type to store
+         */
+        template<typename R, typename ...Args>
         void emplace(Args &&...args) {
-            static auto id = detail::get_resource_id<Res>();
+            static auto id = detail::get_resource_id<R>();
             presence.set(id);
-            resources[id] = std::make_unique<Res>(std::forward<Args>(args)...);
+            resources[id] = std::make_unique<R>(std::forward<Args>(args)...);
         }
 
-        template<typename Res>
+        /**
+         * Destroys Resource.
+         * Checks that resource exists with <cassert> which is disabled in Release build.
+         * @tparam R Resource type to erase
+         */
+        template<typename R>
         void erase() {
-            static auto id = detail::get_resource_id<Res>();
+            static auto id = detail::get_resource_id<R>();
             assert(presence[id]);
 
             presence.reset(id);
-            resources[id] = std::shared_ptr<Res>();
+            resources[id] = std::shared_ptr<R>();
         }
 
-        template<class Res>
-        const Res &get() const {
-            static auto id = detail::get_resource_id<Res>();
+        /**
+         * Obtains immutable reference to Resource.
+         * Checks that resource exists with <cassert> which is disabled in Release build.
+         * @tparam R Resource type to get
+         */
+        template<class R>
+        const R &get() const {
+            static auto id = detail::get_resource_id<R>();
             assert(presence[id]);
-            return *static_cast<const Res *>(resources[id].get());
+            return *static_cast<const R *>(resources[id].get());
         }
 
-        template<class Res>
-        Res &get() {
-            static auto id = detail::get_resource_id<Res>();
+        /**
+         * Obtains mutable reference to Resource.
+         * Checks that resource exists with <cassert> which is disabled in Release build.
+         * @tparam R Resource type to get
+         */
+        template<class R>
+        R &get() {
+            static auto id = detail::get_resource_id<R>();
             assert(presence[id]);
-            return *static_cast<Res *>(resources[id].get());
+            return *static_cast<R *>(resources[id].get());
         }
 
-        template<class Res>
+        /**
+         * Checks if Resource is present.
+         * @tparam R Resource type to get
+         */
+        template<class R>
         bool has() {
-            static auto id = detail::get_resource_id<Res>();
+            static auto id = detail::get_resource_id<R>();
             return presence[id];
         }
 

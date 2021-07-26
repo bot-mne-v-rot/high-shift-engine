@@ -28,17 +28,30 @@ namespace ecs {
         }
     }
 
+    /**
+     * Heart of the ECS. Statically dispatches all the
+     * resources used by the specified systems.
+     * @tparam Systems
+     */
     template<System ...Systems>
     class Dispatcher {
     public:
         Dispatcher() : Dispatcher(World()) {}
 
+        /**
+         * Creates all the resources used by the systems.
+         * By now resources are supposed to be default-destructible.
+         */
         explicit Dispatcher(World world_) : world(std::move(world_)) {
             detail::tuple_for_each(systems, [this]<System S>(S &system) {
                 detail::setup_resources(world, &S::update);
             });
         }
 
+        /**
+         * Takes all the resources used by the systems and injects them
+         * when update method of each system is called.
+         */
         void update() {
             detail::tuple_for_each(systems, [this]<System S>(S &system) {
                 detail::update_with_resources(world, system, &S::update);

@@ -58,11 +58,11 @@ namespace ecs {
     template<typename ...Storages>
     requires(Storage<std::remove_const_t<Storages>> && ...)
     inline detail::JoinRange<Storages...> join(Storages &...storages) {
-        auto joined_mask = (storages.present() && ...);
+        auto joined_mask = std::make_unique<detail::JoinedMask<Storages...>>((storages.present() && ...));
         return detail::JoinRange<Storages...>(
-                detail::JoinIterator<Storages...>(&storages..., joined_mask.begin()),
-                detail::JoinIterator<Storages...>(&storages..., joined_mask.end()),
-                joined_mask
+                detail::JoinIterator<Storages...>(&storages..., joined_mask->begin()),
+                detail::JoinIterator<Storages...>(&storages..., joined_mask->end()),
+                std::move(joined_mask)
         );
     }
 

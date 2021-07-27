@@ -62,7 +62,7 @@ namespace ecs {
             using iterator = JoinIterator<Storages...>;
             using Mask = JoinedMask<Storages...>;
 
-            JoinRange(iterator begin, iterator end, Mask keep_alive)
+            JoinRange(iterator begin, iterator end, std::unique_ptr<Mask> keep_alive)
                     : b(begin), e(end), keep_alive(std::move(keep_alive)) {}
 
             iterator begin() const;
@@ -71,7 +71,7 @@ namespace ecs {
             const_iterator cend() const;
         private:
             iterator b, e;
-            [[maybe_unused]] Mask keep_alive;
+            [[maybe_unused]] std::unique_ptr<Mask> keep_alive; // Iterator are invalidated if Mask is relocated
         };
     }
 

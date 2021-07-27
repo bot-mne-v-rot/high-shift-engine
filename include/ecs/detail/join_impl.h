@@ -11,38 +11,38 @@ namespace ecs {
 
         template<typename ...Storages>
         requires(Storage<std::remove_const_t<Storages>> && ...)
-        auto JoinRange<Storages...>::begin() const -> iterator {
+        inline auto JoinRange<Storages...>::begin() const -> iterator {
             return b;
         }
 
         template<typename ...Storages>
         requires(Storage<std::remove_const_t<Storages>> && ...)
-        auto JoinRange<Storages...>::end() const -> iterator {
+        inline auto JoinRange<Storages...>::end() const -> iterator {
             return e;
         }
 
         template<typename ...Storages>
         requires(Storage<std::remove_const_t<Storages>> && ...)
-        auto JoinRange<Storages...>::cbegin() const -> iterator {
+        inline auto JoinRange<Storages...>::cbegin() const -> iterator {
             return b;
         }
 
         template<typename ...Storages>
         requires(Storage<std::remove_const_t<Storages>> && ...)
-        auto JoinRange<Storages...>::cend() const -> iterator {
+        inline auto JoinRange<Storages...>::cend() const -> iterator {
             return e;
         }
 
         template<typename ...Storages>
         requires(Storage<std::remove_const_t<Storages>> && ...)
-        JoinIterator<Storages...> & JoinIterator<Storages...>::operator++() {
+        inline JoinIterator<Storages...> & JoinIterator<Storages...>::operator++() {
             ++mask_iterator;
             return *this;
         }
 
         template<typename ...Storages>
         requires(Storage<std::remove_const_t<Storages>> && ...)
-        JoinIterator<Storages...> JoinIterator<Storages...>::operator++(int) {
+        inline JoinIterator<Storages...> JoinIterator<Storages...>::operator++(int) {
             auto copy = *this;
             ++(*this);
             return copy;
@@ -50,7 +50,7 @@ namespace ecs {
 
         template<typename ...Storages>
         requires(Storage<std::remove_const_t<Storages>> && ...)
-        auto JoinIterator<Storages...>::operator*() const -> reference {
+        inline auto JoinIterator<Storages...>::operator*() const -> reference {
             return deref_storages_tuple(storages, *mask_iterator);
         }
     }

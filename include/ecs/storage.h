@@ -4,7 +4,17 @@
 #include <concepts>
 #include <type_traits>
 
+#include "ecs/id_set.h"
+
 namespace ecs {
+    namespace detail {
+        template<typename S>
+        concept ConstLvalueRefToIdSetLike = requires {
+            requires std::is_lvalue_reference_v<S>;
+            requires std::is_const_v<std::remove_reference_t<S>>;
+            requires IdSetLike<std::remove_cvref_t<S>>;
+        };
+    }
 
     /**
      * https://stackoverflow.com/questions/60449592/how-do-you-define-a-c-concept-for-the-standard-library-containers
@@ -45,7 +55,8 @@ namespace ecs {
         { a.insert(id, c_lval_ref) } -> std::same_as<void>;
         { a.insert(id, rval_ref) } -> std::same_as<void>;
         { a.erase(id) } -> std::same_as<void>;
-        { a.contains(id) } -> std::same_as<bool>;
+        { b.contains(id) } -> std::same_as<bool>;
+        { b.present() } -> detail::ConstLvalueRefToIdSetLike;
     };;
 }
 

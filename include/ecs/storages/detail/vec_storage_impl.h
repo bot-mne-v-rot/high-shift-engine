@@ -31,22 +31,22 @@ namespace ecs {
     }
 
     template<typename T>
-    VecStorage<T> &VecStorage<T>::operator=(const VecStorage &other) {
+    VecStorage <T> &VecStorage<T>::operator=(const VecStorage &other) {
         if (this == &other)
             return *this;
 
         reserve(other.capacity());
-        for (std::size_t i = 0; i < other.mask.size(); ++i)
-            if (other.mask[i] && mask[i])
-                data[i] = other.data[i];
-            else if (other.mask[i] && !mask[i])
-                new(data + i) T(other.data[i]);
-            else if (!other.mask[i] && mask[i])
-                std::destroy_at(data + i);
+        for (ecs::Id id : other.mask)
+            if (mask.contains(id))
+                data[id] = other.data[id];
+            else
+                new(data + id) T(other.data[id]);
 
-        for (std::size_t i = other.mask.size(); i < mask.size(); ++i)
-            if (mask[i])
-                std::destroy_at(data + i);
+        for (ecs::Id id : mask)
+            if (!other.mask.contains(id))
+                std::destroy_at(data + id);
+
+        mask = other.mask;
 
         sz = other.sz;
         return *this;
@@ -75,17 +75,16 @@ namespace ecs {
 
     template<typename T>
     bool VecStorage<T>::contains(Id id) const {
-        return mask.size() > id && mask[id];
+        return mask.contains(id);
     }
 
     template<typename T>
     template<typename ...Args>
     void VecStorage<T>::emplace(Id id, Args &&...args) {
-        if (mask.size() <= id) mask.resize(id + 1);
+        mask.reserve(id + 1);
         reserve(mask.capacity());
-
-        if (!mask[id]) ++sz;
-        mask[id] = true;
+        if (!mask.contains(id)) ++sz;
+        mask.insert(id);
         new(data + id) T(std::forward<Args>(args)...);
     }
 
@@ -101,17 +100,19 @@ namespace ecs {
 
     template<typename T>
     void VecStorage<T>::erase(Id id) {
-        if (mask.size() <= id || !mask[id])
+        if (!mask.contains(id))
             return;
         std::destroy_at(data + id);
-        mask[id] = false;
+        mask.erase(id);
         --sz;
     }
 
     template<typename T>
     void VecStorage<T>::clear() {
-        for (std::size_t i = 0; i < mask.size(); ++i)
-            sz = 0;
+        for (ecs::Id id : mask)
+            std::destroy_at(data + id);
+        mask.clear();
+        sz = 0;
     }
 
     template<typename T>
@@ -121,11 +122,10 @@ namespace ecs {
 
         T *new_data = static_cast<T *>(operator new(n * sizeof(T)));
 
-        for (std::size_t i = 0; i < mask.size(); ++i)
-            if (mask[i]) {
-                new(new_data + i) T(std::move(data[i]));
-                std::destroy_at(data + i);
-            }
+        for (ecs::Id id : mask) {
+            new(new_data + id) T(std::move(data[id]));
+            std::destroy_at(data + id);
+        }
 
         operator delete(data);
 
@@ -143,12 +143,16 @@ namespace ecs {
 
     template<typename T>
     VecStorage<T>::~VecStorage() noexcept {
-        for (std::size_t i = 0; i < mask.size(); ++i)
-            if (mask[i])
-                std::destroy_at(data + i);
+        for (ecs::Id id : mask)
+            std::destroy_at(data + id);
         operator delete(data);
         sz = 0, cp = 0;
         data = nullptr;
+    }
+
+    template<typename T>
+    const IdSet &VecStorage<T>::present() const {
+        return mask;
     }
 
     template<typename T>
@@ -166,18 +170,15 @@ namespace ecs {
         iterator_template &operator=(const iterator_template &) = default;
 
         reference operator*() const {
-            return *data;
+            return storage->data[*set_iter];
         }
 
         pointer operator->() const {
-            return data;
+            return storage->data + (*set_iter);
         }
 
         iterator_template &operator++() {
-            Id id = static_cast<Id>(data - storage->data) + 1;
-            while (id < storage->mask.size() && !storage->mask[id])
-                ++id;
-            data = storage->data + id;
+            ++set_iter;
             return *this;
         }
 
@@ -187,49 +188,41 @@ namespace ecs {
             return copy;
         }
 
-        bool operator==(const iterator_template &other) const {
-            return data == other.data && storage == other.storage;
-        }
-
-        bool operator!=(const iterator_template &other) const {
-            return data != other.data || storage != other.storage;
-        }
+        bool operator==(const iterator_template &other) const = default;
+        bool operator!=(const iterator_template &other) const = default;
 
         operator iterator_template<const T &, const T *>() const {
-            return iterator_template<const T &, const T *>(data, storage);
+            return iterator_template<const T &, const T *>(set_iter, storage);
         }
 
     private:
-        T *data = nullptr;
+        IdSet::iterator set_iter;
 
         friend VecStorage;
         VecStorage *storage;
-        iterator_template(T *data, VecStorage *storage)
-                : data(data), storage(storage) {}
+
+        iterator_template(IdSet::iterator set_iter, VecStorage *storage)
+                : set_iter(set_iter), storage(storage) {}
     };
 
     template<typename T>
     typename VecStorage<T>::iterator VecStorage<T>::begin() {
-        std::size_t id = 0;
-        while (id < mask.size() && !mask[id]) ++id;
-        return iterator(data + id, this);
+        return iterator(mask.begin(), this);
     }
 
     template<typename T>
     typename VecStorage<T>::iterator VecStorage<T>::end() {
-        return iterator(data + mask.size(), this);
+        return iterator(mask.end(), this);
     }
 
     template<typename T>
     typename VecStorage<T>::const_iterator VecStorage<T>::cbegin() const {
-        std::size_t id = 0;
-        while (id < mask.size() && !mask[id]) ++id;
-        return const_iterator(data, this);
+        return const_iterator(mask.begin(), this);
     }
 
     template<typename T>
     typename VecStorage<T>::const_iterator VecStorage<T>::cend() const {
-        return const_iterator(data + mask.size(), this);
+        return const_iterator(mask.end(), this);
     }
 
     template<typename T>

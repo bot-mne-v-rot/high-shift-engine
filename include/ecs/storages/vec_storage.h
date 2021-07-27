@@ -68,10 +68,12 @@ namespace ecs {
         const_iterator cbegin() const;
         const_iterator cend() const;
 
+        const IdSet &present() const;
+
         ~VecStorage() noexcept;
 
     private:
-        std::vector<bool> mask;
+        IdSet mask;
         T *data = nullptr;
         std::size_t sz = 0, cp = 0;
     };

@@ -117,7 +117,7 @@ namespace ecs {
 
     template<typename T>
     void VecStorage<T>::reserve(std::size_t n) noexcept {
-        if (n < cp)
+        if (n <= cp)
             return;
 
         T *new_data = static_cast<T *>(operator new(n * sizeof(T)));

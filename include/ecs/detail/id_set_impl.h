@@ -179,39 +179,94 @@ namespace ecs {
         return std::min(a.capacity(), b.capacity());
     }
 
+    template<IdSetLike A, IdSetLike B>
+    inline Id IdSetAnd<A, B>::first() const {
+        uint64_t levels_data[IdSet::levels_num];
+        levels_data[IdSet::levels_num - 1] = level_data(IdSet::levels_num - 1, 0);
+
+        Id pos = 0;
+        for (std::size_t i = IdSet::levels_num - 1; i < IdSet::levels_num; ) {
+            if (levels_data[i] == 0) { // should go up
+                if (i == IdSet::levels_num - 1)
+                    return capacity(); // nowhere to go up
+                pos >>= IdSet::shift; // move pos back
+                ++i; // go up
+                levels_data[i] &= (levels_data[i] - 1); // erase the false-positive bit
+                continue;
+            }
+
+            uint64_t trailing = __builtin_ctzll(levels_data[i]);
+            pos <<= IdSet::shift;
+            pos |= trailing;
+
+            if (i == 0) break;
+            --i; // go down
+            levels_data[i] = level_data(i, pos);
+        }
+        return pos;
+    }
+
+    template<IdSetLike A, IdSetLike B>
+    inline bool IdSetAnd<A, B>::empty() const {
+        return first() == capacity();
+    }
+
+    template<IdSetLike A, IdSetLike B>
+    inline typename IdSetAnd<A, B>::const_iterator IdSetAnd<A, B>::begin() const {
+        return cbegin();
+    }
+
+    template<IdSetLike A, IdSetLike B>
+    inline typename IdSetAnd<A, B>::const_iterator IdSetAnd<A, B>::end() const {
+        return cend();
+    }
+
+    template<IdSetLike A, IdSetLike B>
+    inline typename IdSetAnd<A, B>::const_iterator IdSetAnd<A, B>::cbegin() const {
+//        if (empty()) return cend();
+        return IdSetAnd<A, B>::const_iterator(this, first());
+    }
+
+    template<IdSetLike A, IdSetLike B>
+    inline typename IdSetAnd<A, B>::const_iterator IdSetAnd<A, B>::cend() const {
+        return IdSetAnd<A, B>::const_iterator(this, capacity());
+    }
+
     template<IdSetLike S>
     inline Id IdSetIterator<S>::operator*() const {
         return pos;
     }
 
     template<IdSetLike S>
-    inline IdSetIterator <S> &IdSetIterator<S>::operator++() {
+    inline IdSetIterator<S> &IdSetIterator<S>::operator++() {
+        levels_data[0] &= levels_data[0] - 1; // zero out current bit
 
-        for (std::size_t i = 0; i < IdSet::levels_num; ++i) {
-            uint64_t &block = levels_data[i];
-            block &= (block - 1); // unset LSB
-
-            if (block) {
-                uint64_t trailing = __builtin_ctzll(block);
-                pos &= ~IdSet::lower_bits;
-                pos |= trailing;
-
-                for (int sub = i - 1; sub >= 0; --sub) {
-                    levels_data[sub] = set->level_data(sub, pos);
-                    trailing = __builtin_ctzll(levels_data[sub]);
-                    pos <<= IdSet::shift;
-                    pos |= trailing;
+        pos >>= IdSet::shift; // index of block at level 0
+        for (std::size_t i = 0; i < IdSet::levels_num; ) {
+            if (levels_data[i] == 0) { // should go up
+                if (i == IdSet::levels_num - 1) {
+                    pos = set->capacity(); // nowhere to go up
+                    break;
                 }
-                return *this;
+                pos >>= IdSet::shift; // move pos back
+                ++i; // go up
+                levels_data[i] &= (levels_data[i] - 1); // erase the false-positive bit
+                continue;
             }
-            pos >>= IdSet::shift;
+
+            uint64_t trailing = __builtin_ctzll(levels_data[i]);
+            pos <<= IdSet::shift;
+            pos |= trailing;
+
+            if (i == 0) break;
+            --i; // go down
+            levels_data[i] = set->level_data(i, pos);
         }
-        pos = set->capacity();
         return *this;
     }
 
     template<IdSetLike S>
-    inline IdSetIterator<S> IdSetIterator<S>::operator++(int) {
+    inline IdSetIterator <S> IdSetIterator<S>::operator++(int) {
         auto copy = *this;
         ++(*this);
         return copy;

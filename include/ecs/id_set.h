@@ -15,9 +15,20 @@ namespace ecs {
         { c.capacity() } -> std::same_as<typename S::size_type>;
         { c.level_data(lvl, ind) } -> std::same_as<uint64_t>;
         { c.level_capacity(lvl) } -> std::same_as<std::size_t>;
+        { c.first() } -> std::same_as<Id>;
+        { c.empty() } -> std::same_as<bool>;
     };
 
-    // Bitset that allows for fast scanning of set bits.
+    /**
+     * Bitset that allows for fast scanning of set bits.
+     *
+     * Layout example, with an imaginary 4-bit uint64_t:
+     *
+     * Layer 3: 1------------------------------------------------ ...
+     * Layer 2: 1------------------ 1------------------ 0-------- ...
+     * Layer 1: 1--- 0--- 0--- 0--- 1--- 0--- 1--- 0--- 0--- 0--- ...
+     * Layer 0: 0010 0000 0000 0000 0011 0000 1111 0000 0000 0000 ...
+     */
     class IdSet {
     public:
         using value_type = Id;
@@ -29,6 +40,7 @@ namespace ecs {
         IdSet();
 
         class const_iterator;
+
         using iterator = const_iterator;
 
         void insert(Id id);
@@ -65,9 +77,9 @@ namespace ecs {
         constexpr static std::size_t shifts[levels_num] = {0, shift, shift * 2, shift * 3};
 
     private:
-        uint64_t level3 = 0;
+        uint64_t level3 = 0; // level3 is preallocated and hardcoded to never grow
         uint64_t *levels[levels_num]{nullptr, nullptr, nullptr, &level3};
-        std::size_t lvl_cp[levels_num]{};
+        std::size_t lvl_cp[levels_num]{0, 0, 0, 1};
         std::size_t cp = 0;
         std::size_t sz = 0;
     };
@@ -102,7 +114,8 @@ namespace ecs {
             for (std::size_t i = 0; i < IdSet::levels_num; ++i) {
                 uint32_t lower = (cur & IdSet::lower_bits);
                 cur >>= IdSet::shift;
-                levels_data[i] = (set->level_data(i, cur) & (~((1ull << lower) - 1)));
+                uint64_t block = (cur < set->level_capacity(i) ? set->level_data(i, cur) : 0);
+                levels_data[i] = block & (~((1ull << lower) - 1));
             }
         }
 
@@ -120,9 +133,17 @@ namespace ecs {
     template<IdSetLike A, IdSetLike B>
     class IdSetAnd {
     public:
+        using value_type = Id;
+        using reference = Id &;
+        using const_reference = Id;
+        using difference_type = std::ptrdiff_t;
+        using size_type = std::size_t;
+
         IdSetAnd(const A &a, const B &b) : a(a), b(b) {}
 
         bool contains(Id id) const;
+        bool empty() const;
+        Id first() const;
 
         std::size_t capacity() const;
 
@@ -147,6 +168,11 @@ namespace ecs {
     public:
         const_iterator(const IdSetAnd<A, B> *set, Id pos) : IdSetIterator<IdSetAnd<A, B>>(set, pos) {}
     };
+
+    template<IdSetLike A, IdSetLike B>
+    inline IdSetAnd<A, B> operator&&(const A &a, const B &b) {
+        return IdSetAnd<A, B>(a, b);
+    }
 }
 
 // Implementation should be visible to make inlining possible.

@@ -14,7 +14,7 @@ namespace {
     static_assert(ecs::Component<SomeComponent>);
 }
 
-TEST_SUITE("ecs/storages/vec_storage") {
+TEST_SUITE("ecs/storages/VecStorage") {
     TEST_CASE("empty") {
         ecs::VecStorage<SomeComponent> storage;
         CHECK(storage.size() == 0);

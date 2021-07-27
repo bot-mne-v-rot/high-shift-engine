@@ -28,8 +28,12 @@ namespace ecs {
 
         IdSet();
 
+        class const_iterator;
+        using iterator = const_iterator;
+
         void insert(Id id);
         void erase(Id id);
+        iterator erase(const_iterator it);
         bool contains(Id id) const;
 
         std::size_t size() const;
@@ -44,9 +48,6 @@ namespace ecs {
 
         ~IdSet();
 
-        class const_iterator;
-
-        using iterator = const_iterator;
 
         const_iterator begin() const;
         const_iterator end() const;

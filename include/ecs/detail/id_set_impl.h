@@ -54,11 +54,22 @@ namespace ecs {
         detail::reset_bit(levels[0][id], pos);
 
         for (std::size_t i = 1; i < levels_num; ++i) {
-            pos = id & lower_bits;
             uint64_t bit = (levels[i - 1][id] != 0);
-            detail::place_bit(levels[i][id], pos, bit);
+
+            pos = id & lower_bits;
             id >>= shift;
+            detail::place_bit(levels[i][id], pos, bit);
         }
+    }
+
+    inline IdSet::iterator IdSet::erase(const_iterator it) {
+        erase(*it++);
+        return it;
+    }
+
+    inline void IdSet::clear() {
+        auto e = end();
+        for (auto it = begin(); it != e; it = erase(it));
     }
 
     inline bool IdSet::contains(Id id) const {
@@ -130,10 +141,19 @@ namespace ecs {
     }
 
     inline IdSet::const_iterator IdSet::begin() const {
-        return IdSet::const_iterator(this, first());
+        return cbegin();
     }
 
     inline IdSet::const_iterator IdSet::end() const {
+        return cend();
+    }
+
+    inline IdSet::const_iterator IdSet::cbegin() const {
+        if (empty()) return cend();
+        return IdSet::const_iterator(this, first());
+    }
+
+    inline IdSet::const_iterator IdSet::cend() const {
         return IdSet::const_iterator(this, capacity());
     }
 
@@ -188,11 +208,10 @@ namespace ecs {
         return *this;
     }
 
-
     template<IdSetLike S>
     inline IdSetIterator<S> IdSetIterator<S>::operator++(int) {
         auto copy = *this;
-        ++copy;
+        ++(*this);
         return copy;
     }
 

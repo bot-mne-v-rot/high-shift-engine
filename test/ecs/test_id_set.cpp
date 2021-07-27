@@ -97,6 +97,30 @@ TEST_SUITE("ecs/storages/IdSet") {
             CHECK(set.contains(id3));
             CHECK(set.size() == 3);
         }
+
+        SUBCASE("erase returns next iterator") {
+            auto it = set.erase(set.begin());
+            CHECK(*it == id2);
+            CHECK(set.size() == 2);
+            it = set.erase(set.begin());
+            CHECK(*it == id3);
+            CHECK(set.size() == 1);
+        }
+    }
+
+    TEST_CASE("clear") {
+        ecs::IdSet set;
+        constexpr ecs::Id ids[] = {10, 11, 12, 500, 1000, 1020, 5000, 100000, 100001, 1000000, 10000000};
+        constexpr std::size_t ids_n = sizeof(ids) / sizeof(ecs::Id);
+
+        for (ecs::Id id : ids)
+            set.insert(id);
+        CHECK(set.size() == ids_n);
+
+        set.clear();
+        CHECK(set.size() == 0);
+        CHECK(set.empty());
+        CHECK(set.begin() == set.end());
     }
 
     TEST_CASE("iterator") {
@@ -134,6 +158,5 @@ TEST_SUITE("ecs/storages/IdSet") {
                 CHECK(i == ids_n);
             }
         }
-
     }
 }

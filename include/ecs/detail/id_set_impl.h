@@ -1,4 +1,6 @@
 #include <algorithm>
+#include <memory.h>
+#include <cassert>
 
 namespace ecs {
     namespace detail {
@@ -98,7 +100,7 @@ namespace ecs {
 
             if (old_level_cp != new_level_cp) {
                 auto new_level = new uint64_t[new_level_cp]{};
-                if (level) std::memcpy(new_level, level, old_level_cp * sizeof(uint64_t));
+                if (level) memcpy(new_level, level, old_level_cp * sizeof(uint64_t));
                 delete[] level;
                 level = new_level;
             }

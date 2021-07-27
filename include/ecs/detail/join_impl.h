@@ -1,11 +1,22 @@
 namespace ecs {
     namespace detail {
         template<typename ...Args, std::size_t... Ns>
-        inline auto deref_storages_tuple_impl(const std::tuple<Args...> &tuple, Id id, std::index_sequence<Ns...>) {
+        inline auto deref_storages_tuple_impl(const std::tuple<Args...> &tuple, Id id,
+                                              std::index_sequence<Ns...>) {
             return std::tie((*std::get<Ns>(tuple))[id]...);
         }
         template<typename ...Args>
         inline auto deref_storages_tuple(const std::tuple<Args...> &tuple, Id id) {
+            return deref_storages_tuple_impl(tuple, id, std::make_index_sequence<sizeof...(Args)>());
+        }
+
+        template<typename ...Args, std::size_t... Ns>
+        inline auto deref_to_pnt_storages_tuple_impl(const std::tuple<Args...> &tuple, Id id,
+                                                     std::index_sequence<Ns...>) {
+            return std::tie(&(*std::get<Ns>(tuple))[id]...);
+        }
+        template<typename ...Args>
+        inline auto deref_to_pnt_storages_tuple(const std::tuple<Args...> &tuple, Id id) {
             return deref_storages_tuple_impl(tuple, id, std::make_index_sequence<sizeof...(Args)>());
         }
 
@@ -52,6 +63,12 @@ namespace ecs {
         requires(Storage<std::remove_const_t<Storages>> && ...)
         inline auto JoinIterator<Storages...>::operator*() const -> reference {
             return deref_storages_tuple(storages, *mask_iterator);
+        }
+
+        template<typename ...Storages>
+        requires(Storage<std::remove_const_t<Storages>> && ...)
+        inline auto JoinIterator<Storages...>::operator->() const -> pointer {
+            return deref_to_pnt_storages_tuple(storages, *mask_iterator);
         }
     }
 

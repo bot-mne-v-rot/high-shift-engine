@@ -1,6 +1,7 @@
 #ifndef HIGH_SHIFT_JOIN_H
 #define HIGH_SHIFT_JOIN_H
 
+#include <memory>
 #include "ecs/storage.h"
 
 //#include <ranges>

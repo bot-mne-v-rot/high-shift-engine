@@ -192,6 +192,7 @@ namespace ecs {
         const_iterator end() const;
         const_iterator cbegin() const;
         const_iterator cend() const;
+
     private:
         const A &a;
         const B &b;
@@ -239,6 +240,7 @@ namespace ecs {
         const_iterator end() const;
         const_iterator cbegin() const;
         const_iterator cend() const;
+
     private:
         const A &a;
         const B &b;
@@ -287,6 +289,7 @@ namespace ecs {
         const_iterator end() const;
         const_iterator cbegin() const;
         const_iterator cend() const;
+
     private:
         const S &set;
     };

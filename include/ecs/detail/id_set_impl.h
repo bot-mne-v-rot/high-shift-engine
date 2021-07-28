@@ -36,7 +36,7 @@ namespace ecs {
             levels_data[IdSet::levels_num - 1] = set.level_data(IdSet::levels_num - 1, 0);
 
             Id pos = 0;
-            for (std::size_t i = IdSet::levels_num - 1; i < IdSet::levels_num; ) {
+            for (std::size_t i = IdSet::levels_num - 1; i < IdSet::levels_num;) {
                 if (levels_data[i] == 0) { // should go up
                     if (i == IdSet::levels_num - 1)
                         return set.capacity(); // nowhere to go up
@@ -396,7 +396,7 @@ namespace ecs {
     }
 
     inline uint64_t EmptyIdSet::level_data([[maybe_unused]] std::size_t lvl,
-                                          [[maybe_unused]] std::size_t ind) const {
+                                           [[maybe_unused]] std::size_t ind) const {
         return 0ull;
     }
 
@@ -440,11 +440,11 @@ namespace ecs {
     }
 
     template<IdSetLike S>
-    inline IdSetIterator<S> &IdSetIterator<S>::operator++() {
+    inline IdSetIterator <S> &IdSetIterator<S>::operator++() {
         levels_data[0] &= levels_data[0] - 1; // zero out current bit
 
         pos >>= IdSet::shift; // index of block at level 0
-        for (std::size_t i = 0; i < IdSet::levels_num; ) {
+        for (std::size_t i = 0;;) {
             if (levels_data[i] == 0) { // should go up
                 if (i == IdSet::levels_num - 1) {
                     pos = set->capacity(); // nowhere to go up

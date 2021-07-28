@@ -15,7 +15,7 @@ namespace ecs {
         template<typename ...Storages>
         requires(Storage<std::remove_const_t<Storages>> && ...)
         using JoinedMask =
-        decltype((std::declval<Storages>().present() && ...));
+        decltype((std::declval<Storages>().present() & ...));
 
         template<typename ...Storages>
         requires(Storage<std::remove_const_t<Storages>> && ...)

@@ -12,14 +12,14 @@ namespace ecs {
         }
 
         template<typename ...Args, std::size_t... Ns>
-        inline auto deref_to_pnt_storages_tuple_impl(const std::tuple<Args...> &tuple, Id id,
+        inline auto deref_to_ptr_storages_tuple_impl(const std::tuple<Args...> &tuple, Id id,
                                                      std::index_sequence<Ns...>) {
             return std::tie(&(*std::get<Ns>(tuple))[id]...);
         }
 
         template<typename ...Args>
-        inline auto deref_to_pnt_storages_tuple(const std::tuple<Args...> &tuple, Id id) {
-            return deref_to_pnt_storages_tuple_impl(tuple, id, std::make_index_sequence<sizeof...(Args)>());
+        inline auto deref_to_ptr_storages_tuple(const std::tuple<Args...> &tuple, Id id) {
+            return deref_to_ptr_storages_tuple_impl(tuple, id, std::make_index_sequence<sizeof...(Args)>());
         }
 
         template<typename ...Storages>
@@ -70,14 +70,14 @@ namespace ecs {
         template<typename ...Storages>
         requires(Storage <std::remove_const_t<Storages>> &&...)
         inline auto JoinIterator<Storages...>::operator->() const -> pointer {
-            return deref_to_pnt_storages_tuple(storages, *mask_iterator);
+            return deref_to_ptr_storages_tuple(storages, *mask_iterator);
         }
     }
 
     template<typename ...Storages>
     requires(Storage <std::remove_const_t<Storages>> &&...)
     inline detail::JoinRange<Storages...> join(Storages &...storages) {
-        auto joined_mask = std::make_unique<detail::JoinedMask<Storages...>>((storages.present() && ...));
+        auto joined_mask = std::make_unique<detail::JoinedMask<Storages...>>((storages.present() & ...));
         return detail::JoinRange<Storages...>(
                 detail::JoinIterator<Storages...>(&storages..., joined_mask->begin()),
                 detail::JoinIterator<Storages...>(&storages..., joined_mask->end()),

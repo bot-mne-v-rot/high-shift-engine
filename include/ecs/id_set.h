@@ -86,6 +86,18 @@ namespace ecs {
 
     static_assert(IdSetLike<IdSet>);
 
+    /**
+     * Iterator that can traverse inserted ids in an arbitrary
+     * [IdSetLike] structure.
+     *
+     * @note The iterator takes pointer to a structure and
+     * thus invalidated if the structure is relocated.
+     *
+     * @note Iterator invalidation also happens when
+     * IdSet's memory is reallocated. Therefore its not
+     * recommended to store the iterators while some
+     * other code can modify it.
+     */
     template<IdSetLike S>
     class IdSetIterator {
     public:
@@ -125,11 +137,33 @@ namespace ecs {
         uint64_t levels_data[IdSet::levels_num]{};
     };
 
-    class IdSet::const_iterator : public IdSetIterator<IdSet> {
-    public:
-        const_iterator(const IdSet *set, Id pos) : IdSetIterator<IdSet>(set, pos) {}
-    };
+#define ecs_define_id_set_iterator(...) \
+    struct __VA_ARGS__::const_iterator : public IdSetIterator<__VA_ARGS__> { \
+        const_iterator(const __VA_ARGS__ *set, Id pos) : IdSetIterator<__VA_ARGS__>(set, pos) {} \
+    }
 
+    ecs_define_id_set_iterator(IdSet);
+
+    /**
+     * Virtual Id Set that represents intersection
+     * of two Id Sets (bitwise AND of the bitmasks).
+     *
+     * @note It's effectively bitwise AND of each level.
+     * Therefore set bit on the upper level does not
+     * guarantee that any bit on the lower level is set.
+     * That requires more complex traversal algorithm and
+     * results in lower performance in some cases.
+     *
+     * Consider following example:
+     * A:                      B:
+     * Layer 1: 1--- 1--- ...  Layer 1: 1--- 1--- ...
+     * Layer 0: 1010 1010 ...  Layer 0: 0101 0101 ...
+     *
+     * A && B:
+     * Layer 1: 1--- 1--- ...
+     * Layer 0: 0000 0000 ...
+     *
+     */
     template<IdSetLike A, IdSetLike B>
     class IdSetAnd {
     public:
@@ -164,15 +198,176 @@ namespace ecs {
     };
 
     template<IdSetLike A, IdSetLike B>
-    class IdSetAnd<A, B>::const_iterator : public IdSetIterator<IdSetAnd<A, B>> {
+    ecs_define_id_set_iterator(IdSetAnd<A, B>);
+
+    template<IdSetLike A, IdSetLike B>
+    inline IdSetAnd<A, B> operator&(const A &a, const B &b) {
+        return IdSetAnd<A, B>(a, b);
+    }
+
+    /**
+     * Virtual Id Set that represents union
+     * of two Id Sets (bitwise OR of the bitmasks).
+     *
+     * @note It's effectively bitwise OR of each level.
+     */
+    template<IdSetLike A, IdSetLike B>
+    class IdSetOr {
     public:
-        const_iterator(const IdSetAnd<A, B> *set, Id pos) : IdSetIterator<IdSetAnd<A, B>>(set, pos) {}
+        using value_type = Id;
+        using reference = Id &;
+        using const_reference = Id;
+        using difference_type = std::ptrdiff_t;
+        using size_type = std::size_t;
+
+        IdSetOr(const A &a, const B &b) : a(a), b(b) {}
+
+        bool contains(Id id) const;
+        bool empty() const;
+        Id first() const;
+
+        std::size_t capacity() const;
+
+        uint64_t level_data(std::size_t lvl, std::size_t ind) const;
+        std::size_t level_capacity(std::size_t lvl) const;
+
+        class const_iterator;
+
+        using iterator = const_iterator;
+
+        const_iterator begin() const;
+        const_iterator end() const;
+        const_iterator cbegin() const;
+        const_iterator cend() const;
+    private:
+        const A &a;
+        const B &b;
     };
 
     template<IdSetLike A, IdSetLike B>
-    inline IdSetAnd<A, B> operator&&(const A &a, const B &b) {
-        return IdSetAnd<A, B>(a, b);
+    ecs_define_id_set_iterator(IdSetOr<A, B>);
+
+    template<IdSetLike A, IdSetLike B>
+    inline IdSetOr<A, B> operator|(const A &a, const B &b) {
+        return IdSetOr<A, B>(a, b);
     }
+
+    /**
+     * Virtual Id Set that represents Id Set
+     * complement (bitwise NOT of the bitmask).
+     *
+     * @note It's effectively bitwise NOT of the bottom level
+     * while others are constant 1s.
+     */
+    template<IdSetLike S>
+    class IdSetNot {
+    public:
+        using value_type = Id;
+        using reference = Id &;
+        using const_reference = Id;
+        using difference_type = std::ptrdiff_t;
+        using size_type = std::size_t;
+
+        explicit IdSetNot(const S &set) : set(set) {}
+
+        bool contains(Id id) const;
+        bool empty() const;
+        Id first() const;
+
+        std::size_t capacity() const;
+
+        uint64_t level_data(std::size_t lvl, std::size_t ind) const;
+        std::size_t level_capacity(std::size_t lvl) const;
+
+        class const_iterator;
+
+        using iterator = const_iterator;
+
+        const_iterator begin() const;
+        const_iterator end() const;
+        const_iterator cbegin() const;
+        const_iterator cend() const;
+    private:
+        const S &set;
+    };
+
+    template<IdSetLike S>
+    ecs_define_id_set_iterator(IdSetNot<S>);
+
+    template<IdSetLike S>
+    inline IdSetNot<S> operator~(const S &set) {
+        return IdSetNot<S>(set);
+    }
+
+    /**
+     * Virtual Id Set that represents full Id Set
+     * (all Ids are present).
+     *
+     * @note It just returns 1s.
+     */
+    class FullIdSet {
+    public:
+        using value_type = Id;
+        using reference = Id &;
+        using const_reference = Id;
+        using difference_type = std::ptrdiff_t;
+        using size_type = std::size_t;
+
+        bool contains(Id id) const;
+        bool empty() const;
+        Id first() const;
+
+        std::size_t capacity() const;
+
+        uint64_t level_data(std::size_t lvl, std::size_t ind) const;
+        std::size_t level_capacity(std::size_t lvl) const;
+
+        class const_iterator;
+
+        using iterator = const_iterator;
+
+        const_iterator begin() const;
+        const_iterator end() const;
+        const_iterator cbegin() const;
+        const_iterator cend() const;
+    };
+
+    ecs_define_id_set_iterator(FullIdSet);
+
+    /**
+     * Virtual Id Set that represents empty Id Set
+     * (no Id is present).
+     *
+     * @note It just returns 0s.
+     */
+    class EmptyIdSet {
+    public:
+        using value_type = Id;
+        using reference = Id &;
+        using const_reference = Id;
+        using difference_type = std::ptrdiff_t;
+        using size_type = std::size_t;
+
+        bool contains(Id id) const;
+        bool empty() const;
+        Id first() const;
+
+        std::size_t capacity() const;
+
+        uint64_t level_data(std::size_t lvl, std::size_t ind) const;
+        std::size_t level_capacity(std::size_t lvl) const;
+
+        class const_iterator;
+
+        using iterator = const_iterator;
+
+        const_iterator begin() const;
+        const_iterator end() const;
+        const_iterator cbegin() const;
+        const_iterator cend() const;
+    };
+
+    ecs_define_id_set_iterator(EmptyIdSet);
 }
 
 // Implementation should be visible to make inlining possible.

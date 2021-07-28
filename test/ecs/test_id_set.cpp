@@ -172,13 +172,17 @@ TEST_SUITE("ecs/storages/IdSet") {
         for (ecs::Id id : ids_b)
             b.insert(id);
 
+        SUBCASE("emptiness") {
+            CHECK(!(a & b).empty());
+        }
+
         SUBCASE("first") {
-            CHECK((a && b).first() == 11);
+            CHECK((a & b).first() == 11);
         }
 
         SUBCASE("iteration") {
             std::size_t i = 0;
-            for (ecs::Id id : (a && b))
+            for (ecs::Id id : (a & b))
                 CHECK(ids_c[i++] == id);
             CHECK(i == ids_n);
         }

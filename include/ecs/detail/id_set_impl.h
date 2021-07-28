@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <memory.h>
 #include <cassert>
+#include <limits>
 
 namespace ecs {
     namespace detail {
@@ -28,7 +29,36 @@ namespace ecs {
         inline void zero_out_higher(uint64_t &mask, uint32_t num) {
             mask &= ((1 << (num)) - 1);
         }
+
+        template<IdSetLike S>
+        inline Id first(const S &set) {
+            uint64_t levels_data[IdSet::levels_num];
+            levels_data[IdSet::levels_num - 1] = set.level_data(IdSet::levels_num - 1, 0);
+
+            Id pos = 0;
+            for (std::size_t i = IdSet::levels_num - 1; i < IdSet::levels_num; ) {
+                if (levels_data[i] == 0) { // should go up
+                    if (i == IdSet::levels_num - 1)
+                        return set.capacity(); // nowhere to go up
+                    pos >>= IdSet::shift; // move pos back
+                    ++i; // go up
+                    levels_data[i] &= (levels_data[i] - 1); // erase the false-positive bit
+                    continue;
+                }
+
+                uint64_t trailing = __builtin_ctzll(levels_data[i]);
+                pos <<= IdSet::shift;
+                pos |= trailing;
+
+                if (i == 0) break;
+                --i; // go down
+                levels_data[i] = set.level_data(i, pos);
+            }
+            return pos;
+        }
     }
+
+    ////////////////// IdSet
 
     inline IdSet::IdSet() = default;
 
@@ -159,6 +189,8 @@ namespace ecs {
         return IdSet::const_iterator(this, capacity());
     }
 
+    ////////////////// IdSetAnd
+
     template<IdSetLike A, IdSetLike B>
     inline bool IdSetAnd<A, B>::contains(Id id) const {
         return a.contains(id) && b.contains(id);
@@ -181,29 +213,7 @@ namespace ecs {
 
     template<IdSetLike A, IdSetLike B>
     inline Id IdSetAnd<A, B>::first() const {
-        uint64_t levels_data[IdSet::levels_num];
-        levels_data[IdSet::levels_num - 1] = level_data(IdSet::levels_num - 1, 0);
-
-        Id pos = 0;
-        for (std::size_t i = IdSet::levels_num - 1; i < IdSet::levels_num; ) {
-            if (levels_data[i] == 0) { // should go up
-                if (i == IdSet::levels_num - 1)
-                    return capacity(); // nowhere to go up
-                pos >>= IdSet::shift; // move pos back
-                ++i; // go up
-                levels_data[i] &= (levels_data[i] - 1); // erase the false-positive bit
-                continue;
-            }
-
-            uint64_t trailing = __builtin_ctzll(levels_data[i]);
-            pos <<= IdSet::shift;
-            pos |= trailing;
-
-            if (i == 0) break;
-            --i; // go down
-            levels_data[i] = level_data(i, pos);
-        }
-        return pos;
+        return detail::first(*this);
     }
 
     template<IdSetLike A, IdSetLike B>
@@ -212,25 +222,217 @@ namespace ecs {
     }
 
     template<IdSetLike A, IdSetLike B>
-    inline typename IdSetAnd<A, B>::const_iterator IdSetAnd<A, B>::begin() const {
+    inline auto IdSetAnd<A, B>::begin() const -> const_iterator {
         return cbegin();
     }
 
     template<IdSetLike A, IdSetLike B>
-    inline typename IdSetAnd<A, B>::const_iterator IdSetAnd<A, B>::end() const {
+    inline auto IdSetAnd<A, B>::end() const -> const_iterator {
         return cend();
     }
 
     template<IdSetLike A, IdSetLike B>
-    inline typename IdSetAnd<A, B>::const_iterator IdSetAnd<A, B>::cbegin() const {
-//        if (empty()) return cend();
-        return IdSetAnd<A, B>::const_iterator(this, first());
+    inline auto IdSetAnd<A, B>::cbegin() const -> const_iterator {
+        return const_iterator(this, first());
     }
 
     template<IdSetLike A, IdSetLike B>
-    inline typename IdSetAnd<A, B>::const_iterator IdSetAnd<A, B>::cend() const {
-        return IdSetAnd<A, B>::const_iterator(this, capacity());
+    inline auto IdSetAnd<A, B>::cend() const -> const_iterator {
+        return const_iterator(this, capacity());
     }
+
+    ////////////////// IdSetOr
+
+    template<IdSetLike A, IdSetLike B>
+    inline bool IdSetOr<A, B>::contains(Id id) const {
+        return a.contains(id) || b.contains(id);
+    }
+
+    template<IdSetLike A, IdSetLike B>
+    inline uint64_t IdSetOr<A, B>::level_data(std::size_t lvl, std::size_t ind) const {
+        return a.level_data(lvl, ind) | b.level_data(lvl, ind);
+    }
+
+    template<IdSetLike A, IdSetLike B>
+    inline std::size_t IdSetOr<A, B>::level_capacity(std::size_t lvl) const {
+        return std::min(a.level_capacity(lvl), b.level_capacity(lvl));
+    }
+
+    template<IdSetLike A, IdSetLike B>
+    inline std::size_t IdSetOr<A, B>::capacity() const {
+        return std::min(a.capacity(), b.capacity());
+    }
+
+    template<IdSetLike A, IdSetLike B>
+    inline Id IdSetOr<A, B>::first() const {
+        return detail::first(*this);
+    }
+
+    template<IdSetLike A, IdSetLike B>
+    inline bool IdSetOr<A, B>::empty() const {
+        return a.empty() && b.empty();
+    }
+
+    template<IdSetLike A, IdSetLike B>
+    inline auto IdSetOr<A, B>::begin() const -> const_iterator {
+        return cbegin();
+    }
+
+    template<IdSetLike A, IdSetLike B>
+    inline auto IdSetOr<A, B>::end() const -> const_iterator {
+        return cend();
+    }
+
+    template<IdSetLike A, IdSetLike B>
+    inline auto IdSetOr<A, B>::cbegin() const -> const_iterator {
+        return const_iterator(this, first());
+    }
+
+    template<IdSetLike A, IdSetLike B>
+    inline auto IdSetOr<A, B>::cend() const -> const_iterator {
+        return const_iterator(this, capacity());
+    }
+
+    ////////////////// IdSetNot
+
+    template<IdSetLike S>
+    inline bool IdSetNot<S>::contains(Id id) const {
+        return !set.contains(id);
+    }
+
+    template<IdSetLike S>
+    inline uint64_t IdSetNot<S>::level_data(std::size_t lvl, std::size_t ind) const {
+        if (lvl) return ~0ull;
+        return set.level_data(lvl, ind);
+    }
+
+    template<IdSetLike S>
+    inline std::size_t IdSetNot<S>::level_capacity(std::size_t lvl) const {
+        return set.level_capacity(lvl);
+    }
+
+    template<IdSetLike S>
+    inline std::size_t IdSetNot<S>::capacity() const {
+        return set.capacity();
+    }
+
+    template<IdSetLike S>
+    inline Id IdSetNot<S>::first() const {
+        return detail::first(*this);
+    }
+
+    template<IdSetLike S>
+    inline bool IdSetNot<S>::empty() const {
+        return !set.empty();
+    }
+
+    template<IdSetLike S>
+    inline auto IdSetNot<S>::begin() const -> const_iterator {
+        return cbegin();
+    }
+
+    template<IdSetLike S>
+    inline auto IdSetNot<S>::end() const -> const_iterator {
+        return cend();
+    }
+
+    template<IdSetLike S>
+    inline auto IdSetNot<S>::cbegin() const -> const_iterator {
+        return const_iterator(this, first());
+    }
+
+    template<IdSetLike S>
+    inline auto IdSetNot<S>::cend() const -> const_iterator {
+        return const_iterator(this, capacity());
+    }
+
+    ////////////////// FullIdSet
+
+    inline bool FullIdSet::contains([[maybe_unused]] Id id) const {
+        return true;
+    }
+
+    inline uint64_t FullIdSet::level_data([[maybe_unused]] std::size_t lvl,
+                                          [[maybe_unused]] std::size_t ind) const {
+        return ~0ull;
+    }
+
+    inline std::size_t FullIdSet::level_capacity([[maybe_unused]] std::size_t lvl) const {
+        return std::numeric_limits<std::size_t>::max();
+    }
+
+    inline std::size_t FullIdSet::capacity() const {
+        return std::numeric_limits<std::size_t>::max();
+    }
+
+    inline Id FullIdSet::first() const {
+        return 0;
+    }
+
+    inline bool FullIdSet::empty() const {
+        return false;
+    }
+
+    inline auto FullIdSet::begin() const -> const_iterator {
+        return cbegin();
+    }
+
+    inline auto FullIdSet::end() const -> const_iterator {
+        return cend();
+    }
+
+    inline auto FullIdSet::cbegin() const -> const_iterator {
+        return const_iterator(this, first());
+    }
+
+    inline auto FullIdSet::cend() const -> const_iterator {
+        return const_iterator(this, capacity());
+    }
+
+    ////////////////// EmptyIdSet
+
+    inline bool EmptyIdSet::contains([[maybe_unused]]Id id) const {
+        return false;
+    }
+
+    inline uint64_t EmptyIdSet::level_data([[maybe_unused]] std::size_t lvl,
+                                          [[maybe_unused]] std::size_t ind) const {
+        return 0ull;
+    }
+
+    inline std::size_t EmptyIdSet::level_capacity([[maybe_unused]] std::size_t lvl) const {
+        return 0;
+    }
+
+    inline std::size_t EmptyIdSet::capacity() const {
+        return 0;
+    }
+
+    inline Id EmptyIdSet::first() const {
+        return 0;
+    }
+
+    inline bool EmptyIdSet::empty() const {
+        return true;
+    }
+
+    inline auto EmptyIdSet::begin() const -> const_iterator {
+        return cbegin();
+    }
+
+    inline auto EmptyIdSet::end() const -> const_iterator {
+        return cend();
+    }
+
+    inline auto EmptyIdSet::cbegin() const -> const_iterator {
+        return const_iterator(this, first());
+    }
+
+    inline auto EmptyIdSet::cend() const -> const_iterator {
+        return const_iterator(this, capacity());
+    }
+
+    ////////////////// IdSetIterator
 
     template<IdSetLike S>
     inline Id IdSetIterator<S>::operator*() const {

@@ -33,12 +33,13 @@ TEST_SUITE("ecs/storages/InvertedStorage") {
         for (auto id : ids_b)
             b.insert(id, {});
 
-        static_assert(ecs::Storage<ecs::InvertedStorage<OtherComponent::Storage>>);
-
         std::size_t i = 0;
         auto not_b = !b; // because ecs::join expects lvalues
         for (auto[ca, _] : ecs::join(a, not_b))
             REQUIRE(ca.id == ids_c[i++]);
         CHECK(ids_n == i);
+
+        for (auto id : ids_b)
+            CHECK(!not_b.contains(id));
     }
 }

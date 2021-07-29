@@ -3,5 +3,6 @@
 
 #include "ecs/storage.h"
 #include "ecs/storages/vec_storage.h"
+#include "ecs/storages/inverted_storage.h"
 
 #endif //HIGH_SHIFT_STORAGES_H

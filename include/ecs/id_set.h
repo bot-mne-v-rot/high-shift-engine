@@ -60,7 +60,6 @@ namespace ecs {
 
         ~IdSet();
 
-
         const_iterator begin() const;
         const_iterator end() const;
         const_iterator cbegin() const;
@@ -75,6 +74,9 @@ namespace ecs {
         static const std::size_t lower_bits = bits_num - 1;
         static const std::size_t shift = 6; // = log2(bits_num);
         constexpr static std::size_t shifts[levels_num] = {0, shift, shift * 2, shift * 3};
+
+        static const std::size_t max_size = (1 << (shift * levels_num));
+        // pow(bits_num, levels_num) = pow(2, log2(bits_num) * levels_num);
 
     private:
         uint64_t level3 = 0; // level3 is preallocated and hardcoded to never grow
@@ -258,6 +260,10 @@ namespace ecs {
      * Virtual Id Set that represents Id Set
      * complement (bitwise NOT of the bitmask).
      *
+     * As soon as any IdSet is finite (except FullIdSet)
+     * it's complement is infinite. The implementation
+     * follows the idea of infinite capacity.
+     *
      * @note It's effectively bitwise NOT of the bottom level
      * while others are constant 1s.
      */
@@ -307,6 +313,7 @@ namespace ecs {
      * (all Ids are present).
      *
      * @note It just returns 1s.
+     * @note It has infinite capacity.
      */
     class FullIdSet {
     public:
@@ -321,6 +328,7 @@ namespace ecs {
         Id first() const;
 
         std::size_t capacity() const;
+        std::size_t size() const;
 
         uint64_t level_data(std::size_t lvl, std::size_t ind) const;
         std::size_t level_capacity(std::size_t lvl) const;
@@ -336,6 +344,8 @@ namespace ecs {
     };
 
     ecs_define_id_set_iterator(FullIdSet);
+
+    static_assert(IdSetLike<FullIdSet>);
 
     /**
      * Virtual Id Set that represents empty Id Set
@@ -356,6 +366,7 @@ namespace ecs {
         Id first() const;
 
         std::size_t capacity() const;
+        std::size_t size() const;
 
         uint64_t level_data(std::size_t lvl, std::size_t ind) const;
         std::size_t level_capacity(std::size_t lvl) const;
@@ -371,6 +382,8 @@ namespace ecs {
     };
 
     ecs_define_id_set_iterator(EmptyIdSet);
+
+    static_assert(IdSetLike<EmptyIdSet>);
 }
 
 // Implementation should be visible to make inlining possible.

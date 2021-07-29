@@ -78,9 +78,11 @@ namespace ecs {
     requires(Storage <std::remove_const_t<Storages>> &&...)
     inline detail::JoinRange<Storages...> join(Storages &...storages) {
         auto joined_mask = std::make_unique<detail::JoinedMask<Storages...>>((storages.present() & ...));
+        auto beg = detail::JoinIterator<Storages...>(&storages..., joined_mask->begin());
+        auto end = detail::JoinIterator<Storages...>(&storages..., joined_mask->end());
         return detail::JoinRange<Storages...>(
-                detail::JoinIterator<Storages...>(&storages..., joined_mask->begin()),
-                detail::JoinIterator<Storages...>(&storages..., joined_mask->end()),
+                beg,
+                end,
                 std::move(joined_mask)
         );
     }

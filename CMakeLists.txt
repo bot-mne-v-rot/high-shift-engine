@@ -5,9 +5,9 @@ project(high-shift)
 set(CMAKE_CXX_STANDARD 20)
 set(${CMAKE_CXX_FLAGS} "${CMAKE_CXX_FLAGS} -fno-exceptions")
 set(LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib")
+set(UNIVERSAL_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib")
 
 # Target
-set(SOURCES src/shader.cpp)
 set(TEST_SOURCES test/test.cpp test/ecs/test_world.cpp test/ecs/test_system.cpp test/ecs/test_dispatcher.cpp test/ecs/storages/test_vec_storage.cpp test/ecs/test_id_set.cpp test/ecs/test_join.cpp)
 set(TEST_TARGET tests)
 
@@ -57,3 +57,9 @@ target_include_directories(${TEST_TARGET} PRIVATE "${GLM_DIR}/include")
 
 # Other libs
 include_directories("${LIB_DIR}/other")
+
+#examples
+file(GLOB EXAMPLE_SOURCES examples/*)
+foreach(exampledir ${EXAMPLE_SOURCES})
+    add_subdirectory(${exampledir} EXCLUDE_FROM_ALL)
+endforeach()

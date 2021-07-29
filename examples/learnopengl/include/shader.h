@@ -1,10 +1,10 @@
-#ifndef LEARNOPENGL_SHADER_H
-#define LEARNOPENGL_SHADER_H
+#ifndef HIGH_SHIFT_SHADER_H
+#define HIGH_SHIFT_SHADER_H
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
-#include "expected.h"
+#include "../lib/other/expected.h"
 
 #include <filesystem>
 
@@ -56,4 +56,4 @@ public:
     ~shader_program();
 };
 
-#endif //LEARNOPENGL_SHADER_H
+#endif //HIGH_SHIFT_SHADER_H

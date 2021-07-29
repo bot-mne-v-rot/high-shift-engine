@@ -117,8 +117,7 @@ namespace ecs {
         while (new_cp < n) new_cp <<= 1;
         cp = new_cp;
 
-        assert(new_cp <= (1 << (shift * levels_num)));
-        // pow(bits_num, levels_num) = pow(2, log2(bits_num) * levels_num);
+        assert(new_cp <= max_size);
 
         for (std::size_t i = 0; i + 1 < levels_num; ++i) {
             auto &level = levels[i];
@@ -302,18 +301,18 @@ namespace ecs {
 
     template<IdSetLike S>
     inline uint64_t IdSetNot<S>::level_data(std::size_t lvl, std::size_t ind) const {
-        if (lvl) return ~0ull;
-        return set.level_data(lvl, ind);
+        if (lvl) return ~0ull; // upper levels are ignored
+        return ind < set.level_capacity(0) ? ~set.level_data(0, ind) : ~0ull;
     }
 
     template<IdSetLike S>
-    inline std::size_t IdSetNot<S>::level_capacity(std::size_t lvl) const {
-        return set.level_capacity(lvl);
+    inline std::size_t IdSetNot<S>::level_capacity(std::size_t) const {
+        return IdSet::max_size;
     }
 
     template<IdSetLike S>
     inline std::size_t IdSetNot<S>::capacity() const {
-        return set.capacity();
+        return IdSet::max_size;
     }
 
     template<IdSetLike S>
@@ -358,11 +357,15 @@ namespace ecs {
     }
 
     inline std::size_t FullIdSet::level_capacity([[maybe_unused]] std::size_t lvl) const {
-        return std::numeric_limits<std::size_t>::max();
+        return IdSet::max_size;
     }
 
     inline std::size_t FullIdSet::capacity() const {
-        return std::numeric_limits<std::size_t>::max();
+        return IdSet::max_size;
+    }
+
+    inline std::size_t FullIdSet::size() const {
+        return IdSet::max_size;
     }
 
     inline Id FullIdSet::first() const {
@@ -382,11 +385,11 @@ namespace ecs {
     }
 
     inline auto FullIdSet::cbegin() const -> const_iterator {
-        return const_iterator(this, first());
+        return {this, first()};
     }
 
     inline auto FullIdSet::cend() const -> const_iterator {
-        return const_iterator(this, capacity());
+        return {this, static_cast<Id>(capacity())};
     }
 
     ////////////////// EmptyIdSet
@@ -408,6 +411,10 @@ namespace ecs {
         return 0;
     }
 
+    inline std::size_t EmptyIdSet::size() const {
+        return 0;
+    }
+
     inline Id EmptyIdSet::first() const {
         return 0;
     }
@@ -425,11 +432,11 @@ namespace ecs {
     }
 
     inline auto EmptyIdSet::cbegin() const -> const_iterator {
-        return const_iterator(this, first());
+        return {this, first()};
     }
 
     inline auto EmptyIdSet::cend() const -> const_iterator {
-        return const_iterator(this, capacity());
+        return {this, static_cast<Id>(capacity())};
     }
 
     ////////////////// IdSetIterator

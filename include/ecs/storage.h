@@ -47,17 +47,26 @@ namespace ecs {
         { a.cend() } -> std::same_as<typename S::const_iterator>;
         { a.size() } -> std::same_as<typename S::size_type>;
         { a.empty() } -> std::same_as<bool>;
-    } && requires(S a, const S b, Id id,
-                  const typename S::value_type &c_lval_ref, typename S::value_type &&rval_ref) {
+    } && requires(S a, const S b, Id id) {
         //// Other requirements:
         { a[id] } -> std::same_as<typename S::value_type &>;
         { b[id] } -> std::same_as<const typename S::value_type &>;
+        { b.contains(id) } -> std::same_as<bool>;
+        { b.present() } -> detail::ConstLvalueRefToIdSetLike;
+    };
+
+    /**
+     * Storage that provides unified interface for
+     * inserting and erasing components.
+     */
+    template<class S>
+    concept MutStorage = requires(S a, Id id,
+                                  const typename S::value_type &c_lval_ref,
+                                  typename S::value_type &&rval_ref) {
         { a.insert(id, c_lval_ref) } -> std::same_as<void>;
         { a.insert(id, rval_ref) } -> std::same_as<void>;
         { a.erase(id) } -> std::same_as<void>;
-        { b.contains(id) } -> std::same_as<bool>;
-        { b.present() } -> detail::ConstLvalueRefToIdSetLike;
-    };;
+    } && Storage<S>;
 }
 
 #endif //HIGH_SHIFT_STORAGE_H

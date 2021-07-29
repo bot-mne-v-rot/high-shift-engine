@@ -187,4 +187,34 @@ TEST_SUITE("ecs/storages/IdSet") {
             CHECK(i == ids_n);
         }
     }
+
+    TEST_CASE("bitwise or") {
+        ecs::IdSet a, b;
+        constexpr ecs::Id ids_a[] = {10, 11, 12, 1000, 5000, 100000, 1000000, 10000000};
+        constexpr ecs::Id ids_b[] = {11, 12, 500, 1000, 1020, 5000, 100001, 1000000};
+        constexpr ecs::Id ids_c[] = {10, 11, 12, 500, 1000, 1020, 5000, 100000, 100001, 1000000, 10000000};
+        constexpr std::size_t ids_n = sizeof(ids_c) / sizeof(ecs::Id);
+
+        for (ecs::Id id : ids_a)
+            a.insert(id);
+        for (ecs::Id id : ids_b)
+            b.insert(id);
+
+        auto c = a | b;
+
+        SUBCASE("emptiness") {
+            CHECK(!c.empty());
+        }
+
+        SUBCASE("first") {
+            CHECK(c.first() == ids_c[0]);
+        }
+
+        SUBCASE("iteration") {
+            std::size_t i = 0;
+            for (ecs::Id id : c)
+                CHECK(ids_c[i++] == id);
+            CHECK(i == ids_n);
+        }
+    }
 }

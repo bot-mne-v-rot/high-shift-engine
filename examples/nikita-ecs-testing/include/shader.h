@@ -8,7 +8,7 @@
 
 #include <filesystem>
 
-class shader {
+class Shader {
 public:
     enum type {
         vertex = GL_VERTEX_SHADER,
@@ -17,33 +17,33 @@ public:
 
     const GLuint id;
 
-    explicit shader(type t);
+    explicit Shader(type t);
 
-    shader(const shader &other) = delete;
-    shader &operator=(const shader &other) = delete;
+    Shader(const Shader &other) = delete;
+    Shader &operator=(const Shader &other) = delete;
 
-    shader(shader &&other) noexcept;
-    shader &operator=(shader &&other) noexcept;
+    Shader(Shader &&other) noexcept;
+    Shader &operator=(Shader &&other) noexcept;
 
     [[nodiscard]] tl::expected<void, std::string> load(std::string_view source) const;
     [[nodiscard]] tl::expected<void, std::string> load_from_file(const std::filesystem::path &path) const;
 
-    ~shader();
+    ~Shader();
 };
 
-class shader_program {
+class ShaderProgram {
 public:
     const GLuint id;
 
-    shader_program();
+    ShaderProgram();
 
-    shader_program(const shader_program &other) = delete;
-    shader_program &operator=(const shader &other) = delete;
+    ShaderProgram(const ShaderProgram &other) = delete;
+    ShaderProgram &operator=(const Shader &other) = delete;
 
-    shader_program(shader_program &&other) noexcept;
-    shader_program &operator=(shader_program &&other) noexcept;
+    ShaderProgram(ShaderProgram &&other) noexcept;
+    ShaderProgram &operator=(ShaderProgram &&other) noexcept;
 
-    void attach(const shader &sh) const;
+    void attach(const Shader &sh) const;
     [[nodiscard]] tl::expected<void, std::string> link() const;
 
     void use() const;
@@ -53,7 +53,7 @@ public:
     void setInt(std::string_view name, int value) const;
     void setFloat(std::string_view name, float value) const;
 
-    ~shader_program();
+    ~ShaderProgram();
 };
 
 #endif //HIGH_SHIFT_SHADER_H

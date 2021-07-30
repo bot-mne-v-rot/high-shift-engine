@@ -7,6 +7,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include "shader.h"
+#include "texture.h"
 #include "ecs/ecs.h"
 
 #include <iostream>
@@ -106,8 +107,68 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos) {
     camera_front = look_dir;
 }
 
+std::filesystem::path vertex_shader_path = std::filesystem::current_path() / "shaders" / "cube.vert";
+std::filesystem::path fragment_shader_path = std::filesystem::current_path() / "shaders" / "cube.frag";
 
-float vertices[] = {
+tl::expected<std::shared_ptr<ShaderProgram>, std::string> setup_shaders() {
+    Shader vertex_shader(Shader::type::vertex);
+    if (auto result = vertex_shader.load_from_file(vertex_shader_path)) {}
+    else return tl::make_unexpected("ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" + result.error());
+
+    Shader fragment_shader(Shader::type::fragment);
+    if (auto result = fragment_shader.load_from_file(fragment_shader_path)) {}
+    else return tl::make_unexpected("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" + result.error());
+
+    ShaderProgram* program = new ShaderProgram;
+    program->attach(vertex_shader);
+    program->attach(fragment_shader);
+
+    if (auto result = program->link()) {}
+    else return tl::make_unexpected("ERROR::SHADER::LINKING_FAILED\n" + result.error());
+
+    return std::shared_ptr<ShaderProgram>(program);
+}
+
+
+inline glm::mat4 get_view() {
+    return glm::lookAt(camera_pos, camera_pos + camera_front, camera_up);
+}
+
+inline glm::mat4 get_projectioon() {
+    return glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
+}
+
+struct CubeData {
+    CubeData() {
+        glGenVertexArrays(1, &VAO);
+        glBindVertexArray(VAO);
+
+        GLuint VBO;
+        glGenBuffers(1, &VBO);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+        // loading vertices
+        // position attribute
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *) 0);
+        glEnableVertexAttribArray(0);
+        // texture attribute
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *) (3 * sizeof(float)));
+        glEnableVertexAttribArray(1);
+
+        glActiveTexture(GL_TEXTURE0);
+        texture0.bind();
+        texture0.load_texture("assets/container.jpg", GL_RGB);
+        glActiveTexture(GL_TEXTURE1);
+        texture1.bind();
+        texture1.load_texture("assets/awesomeface.png", GL_RGBA);
+
+    }
+
+    GLuint VAO = 0;
+    Texture2d texture0, texture1;
+    ShaderProgram shader_program;
+    float vertices[180] {
         -0.5f, -0.5f, -0.5f, 0.0f, 0.0f,
         0.5f, -0.5f, -0.5f, 1.0f, 0.0f,
         0.5f, 0.5f, -0.5f, 1.0f, 1.0f,
@@ -149,6 +210,7 @@ float vertices[] = {
         0.5f, 0.5f, 0.5f, 1.0f, 0.0f,
         -0.5f, 0.5f, 0.5f, 0.0f, 0.0f,
         -0.5f, 0.5f, -0.5f, 0.0f, 1.0f
+    };
 };
 
 glm::vec3 cube_positions[] = {
@@ -164,138 +226,36 @@ glm::vec3 cube_positions[] = {
         glm::vec3(-1.3f, 1.0f, -1.5f)
 };
 
-std::filesystem::path vertex_shader_path = std::filesystem::current_path() / "shaders" / "cube.vert";
-std::filesystem::path fragment_shader_path = std::filesystem::current_path() / "shaders" / "cube.frag";
-
-tl::expected<shader_program, std::string> setup_shaders() {
-    shader vertex_shader(shader::type::vertex);
-    if (auto result = vertex_shader.load_from_file(vertex_shader_path)) {}
-    else return tl::make_unexpected("ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" + result.error());
-
-    shader fragment_shader(shader::type::fragment);
-    if (auto result = fragment_shader.load_from_file(fragment_shader_path)) {}
-    else return tl::make_unexpected("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" + result.error());
-
-    shader_program program;
-    program.attach(vertex_shader);
-    program.attach(fragment_shader);
-
-    if (auto result = program.link()) {}
-    else return tl::make_unexpected("ERROR::SHADER::LINKING_FAILED\n" + result.error());
-
-    return program;
-}
-
-struct cube {
-    GLuint VAO = 0;
-    GLuint texture0 = 0;
-    GLuint texture1 = 0;
-    shader_program program;
+struct TransformComponent {
+    using Storage = ecs::VecStorage<TransformComponent>;
+    glm::vec3 position;
 };
 
-tl::expected<GLuint, std::string> create_texture(const char *filename, GLenum format) {
-    GLuint texture;
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+struct ShaderComponent {
+    using Storage = ecs::VecStorage<ShaderComponent>;
+    std::shared_ptr<ShaderProgram> program;
+};
 
-    int width, height, nrChannels;
-    stbi_set_flip_vertically_on_load(true);
-    uint8_t *data = stbi_load(filename, &width, &height, &nrChannels, 0);
-    if (data) {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, format, GL_UNSIGNED_BYTE, data);
-        glGenerateMipmap(GL_TEXTURE_2D);
-    } else {
-        return tl::make_unexpected<std::string>("Failed to load image");
+class RenderSystem {
+public:
+    void update(const TransformComponent::Storage & transform_s, const ShaderComponent::Storage & shader_s, CubeData & cube_data) {
+        for (auto[transform_cmp, shader_cmp] : ecs::join(transform_s, shader_s)) {
+            glm::mat4 model = glm::translate(glm::mat4(1.0f), transform_cmp.position);
+            glm::mat4 mapping = get_projectioon() * get_view() * model;
+
+            shader_cmp.program->use();
+            int modelLoc = glGetUniformLocation(shader_cmp.program->id, "mapping");
+            glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(mapping));
+
+            glBindVertexArray(cube_data.VAO);
+
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+        }
     }
-    stbi_image_free(data);
+};
 
-    return texture;
-}
 
-tl::expected<cube, std::string> setup_cube() {
-    // VAO
-    GLuint VAO;
-    glGenVertexArrays(1, &VAO);
-    glBindVertexArray(VAO);
-
-//    // EBO
-//    GLuint EBO;
-//    glGenBuffers(1, &EBO);
-//    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-//    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-    // VBO
-    GLuint VBO;
-    glGenBuffers(1, &VBO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    // loading vertices
-    // position attribute
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *) 0);
-    glEnableVertexAttribArray(0);
-    // texture attribute
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *) (3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-
-    GLuint texture0;
-    if (auto result = create_texture("assets/container.jpg", GL_RGB))
-        texture0 = result.value();
-    else return tl::make_unexpected(std::move(result.error()));
-
-    GLuint texture1;
-    if (auto result = create_texture("assets/awesomeface.png", GL_RGBA))
-        texture1 = result.value();
-    else return tl::make_unexpected(std::move(result.error()));
-
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, texture0);
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, texture1);
-
-    glm::mat4 trans = glm::mat4(1.0f);
-    trans = glm::rotate(trans, glm::radians(90.0f), glm::vec3(0.0, 0.0, 1.0));
-    trans = glm::scale(trans, glm::vec3(0.5, 0.5, 0.5));
-
-    // shaders
-    return setup_shaders()
-            .map([&](shader_program program) {
-                program.use();
-                program.setInt("texture0", 0);
-                program.setInt("texture1", 1);
-
-                return cube{
-                        VAO, texture0, texture1, std::move(program)
-                };
-            });
-}
-
-void render_cube(const cube &tri, glm::vec3 pos) {
-    glBindVertexArray(tri.VAO);
-    tri.program.use();
-
-    glm::mat4 model = glm::mat4(1.0f);
-    model = glm::translate(model, pos);
-//    model = glm::rotate(model, (float)glfwGetTime() * glm::radians(50.0f), glm::vec3(0.5f, 1.0f, 0.0f));
-
-    glm::mat4 view;
-    view = glm::lookAt(camera_pos, camera_pos + camera_front, camera_up);
-
-    glm::mat4 projection;
-    projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
-
-    glm::mat4 mapping = projection * view * model;
-
-    int modelLoc = glGetUniformLocation(tri.program.id, "mapping");
-    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(mapping));
-
-    glDrawArrays(GL_TRIANGLES, 0, 36);
-}
 
 int main(int argc, char *argv[]) {
     glfwInit();
@@ -325,13 +285,25 @@ int main(int argc, char *argv[]) {
     glfwSetCursorPosCallback(window, mouse_callback);
 
     glEnable(GL_DEPTH_TEST);
+    stbi_set_flip_vertically_on_load(true);
 
-    cube tri;
-    if (auto result = setup_cube()) {
-        tri = std::move(result.value());
-    } else {
-        std::cerr << result.error();
-        return 1;
+    ecs::Dispatcher<RenderSystem> render_dispatcher;
+    render_dispatcher.get_world().emplace<TransformComponent::Storage>();
+    render_dispatcher.get_world().emplace<ShaderComponent::Storage>();
+
+    int i = 0;
+    auto result_shader_program = setup_shaders();
+    if (!result_shader_program) std::cerr << result_shader_program.error();
+    auto shader_program = std::shared_ptr(result_shader_program.value());
+    shader_program->use();
+    shader_program->setInt("texture0", 0);
+    shader_program->setInt("texture1", 1);
+
+    for (auto pos : cube_positions) {
+        ecs::Resource auto& t_s = render_dispatcher.get_world().get<TransformComponent::Storage>();
+        t_s.insert(i, TransformComponent{pos});
+        ecs::Resource auto& s_s = render_dispatcher.get_world().get<ShaderComponent::Storage>();
+        s_s.insert(i++, ShaderComponent{shader_program});
     }
 
     while (!glfwWindowShouldClose(window)) {
@@ -340,8 +312,7 @@ int main(int argc, char *argv[]) {
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        for (auto &cube_position : cube_positions)
-            render_cube(tri, cube_position);
+        render_dispatcher.update();
 
         glfwSwapBuffers(window);
         glfwPollEvents();

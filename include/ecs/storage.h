@@ -70,12 +70,12 @@ namespace ecs {
      * to obtain an instance of this class.
      */
     template<typename It, typename ConstIt>
-    class WithIdRange {
+    class WithIdView {
     public:
         using const_iterator = WithIdIterator<ConstIt, ConstIt>;
         using iterator = WithIdIterator<It, ConstIt>;
 
-        WithIdRange(It begin, It end)
+        WithIdView(It begin, It end)
                 : b(std::move(begin)), e(std::move(end)) {}
 
         iterator begin() const { return b; }
@@ -86,7 +86,7 @@ namespace ecs {
 
         const_iterator cend() const { return e; }
 
-        operator WithIdRange<ConstIt, ConstIt>() const {
+        operator WithIdView<ConstIt, ConstIt>() const {
             return {ConstIt(b), ConstIt(e)};
         }
 
@@ -135,8 +135,8 @@ namespace ecs {
         // with_id()
         requires detail::HasIdGetter<typename S::iterator>;
         requires detail::HasIdGetter<typename S::const_iterator>;
-        { a.with_id() } -> std::same_as<WithIdRange<typename S::iterator, typename S::const_iterator>>;
-        { b.with_id() } -> std::same_as<WithIdRange<typename S::const_iterator, typename S::const_iterator>>;
+        { a.with_id() } -> std::same_as<WithIdView<typename S::iterator, typename S::const_iterator>>;
+        { b.with_id() } -> std::same_as<WithIdView<typename S::const_iterator, typename S::const_iterator>>;
     };
 
     /**

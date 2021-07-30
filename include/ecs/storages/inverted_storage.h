@@ -76,8 +76,8 @@ namespace ecs {
         const_iterator cbegin() const;
         const_iterator cend() const;
 
-        WithIdRange<iterator, const_iterator> with_id();
-        WithIdRange<const_iterator, const_iterator> with_id() const;
+        WithIdView<iterator, const_iterator> with_id();
+        WithIdView<const_iterator, const_iterator> with_id() const;
 
     private:
         IdSetType mask;

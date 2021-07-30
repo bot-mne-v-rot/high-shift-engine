@@ -53,13 +53,13 @@ namespace ecs {
         };
 
         template<typename ...Storages> requires(Storage<std::remove_const_t<Storages>> &&...)
-        class JoinRange {
+        class JoinView {
         public:
             using const_iterator = JoinIterator<Storages...>;
             using iterator = JoinIterator<Storages...>;
             using Mask = JoinedMask<Storages...>;
 
-            JoinRange(iterator begin, iterator end, std::unique_ptr<Mask> keep_alive)
+            JoinView(iterator begin, iterator end, std::unique_ptr<Mask> keep_alive)
                     : b(std::move(begin)), e(std::move(end)), keep_alive(std::move(keep_alive)) {}
 
             iterator begin() const;
@@ -74,12 +74,7 @@ namespace ecs {
 
     template<typename ...Storages>
     requires(Storage<std::remove_const_t<Storages>> &&...)
-    inline detail::JoinRange<Storages...> join(Storages &...storages);
-
-
-    template<typename ...Storages>
-    requires(Storage<std::remove_const_t<Storages>> &&...)
-    inline detail::JoinRange<Storages...> join_id(Storages &...storages);
+    inline detail::JoinView<Storages...> join(Storages &...storages);
 }
 
 #include "ecs/detail/join_impl.h"

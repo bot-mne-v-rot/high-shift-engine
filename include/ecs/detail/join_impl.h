@@ -24,25 +24,25 @@ namespace ecs {
 
         template<typename ...Storages>
         requires(Storage <std::remove_const_t<Storages>> &&...)
-        inline auto JoinRange<Storages...>::begin() const -> iterator {
+        inline auto JoinView<Storages...>::begin() const -> iterator {
             return b;
         }
 
         template<typename ...Storages>
         requires(Storage <std::remove_const_t<Storages>> &&...)
-        inline auto JoinRange<Storages...>::end() const -> iterator {
+        inline auto JoinView<Storages...>::end() const -> iterator {
             return e;
         }
 
         template<typename ...Storages>
         requires(Storage <std::remove_const_t<Storages>> &&...)
-        inline auto JoinRange<Storages...>::cbegin() const -> iterator {
+        inline auto JoinView<Storages...>::cbegin() const -> iterator {
             return b;
         }
 
         template<typename ...Storages>
         requires(Storage <std::remove_const_t<Storages>> &&...)
-        inline auto JoinRange<Storages...>::cend() const -> iterator {
+        inline auto JoinView<Storages...>::cend() const -> iterator {
             return e;
         }
 
@@ -76,11 +76,11 @@ namespace ecs {
 
     template<typename ...Storages>
     requires(Storage <std::remove_const_t<Storages>> &&...)
-    inline detail::JoinRange<Storages...> join(Storages &...storages) {
+    inline detail::JoinView<Storages...> join(Storages &...storages) {
         auto joined_mask = std::make_unique<detail::JoinedMask<Storages...>>((storages.present() & ...));
         auto beg = detail::JoinIterator<Storages...>(&storages..., joined_mask->begin());
         auto end = detail::JoinIterator<Storages...>(&storages..., joined_mask->end());
-        return detail::JoinRange<Storages...>(
+        return detail::JoinView<Storages...>(
                 beg,
                 end,
                 std::move(joined_mask)

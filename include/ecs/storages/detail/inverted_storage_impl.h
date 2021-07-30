@@ -103,12 +103,12 @@ namespace ecs {
     }
 
     template<Storage S>
-    auto InvertedStorage<S>::with_id() -> WithIdRange<iterator, const_iterator> {
+    auto InvertedStorage<S>::with_id() -> WithIdView<iterator, const_iterator> {
         return { begin(), end() };
     }
 
     template<Storage S>
-    auto InvertedStorage<S>::with_id() const -> WithIdRange<const_iterator, const_iterator> {
+    auto InvertedStorage<S>::with_id() const -> WithIdView<const_iterator, const_iterator> {
         return { begin(), end() };
     }
 }

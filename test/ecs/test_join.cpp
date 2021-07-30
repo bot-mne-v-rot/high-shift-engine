@@ -57,12 +57,26 @@ TEST_SUITE("ecs/join") {
         std::size_t i = 0;
         const SomeComponent::Storage &a = storage_a;
         OtherComponent::Storage &b = storage_b;
-        for (auto[some, other] : ecs::join(a, b)) {
-            CHECK(some.i == ids_c[i]);
-            CHECK(other.i == ids_c[i]);
-            ++i;
+
+        SUBCASE("without id") {
+            for (auto[some, other] : ecs::join(a, b)) {
+                CHECK(some.i == ids_c[i]);
+                CHECK(other.i == ids_c[i]);
+                ++i;
+            }
+            CHECK(i == ids_n);
         }
-        CHECK(i == ids_n);
+
+        SUBCASE("with id") {
+            for (auto[id, some, other] : ecs::join_with_id(a, b)) {
+                CHECK(some.i == ids_c[i]);
+                CHECK(other.i == ids_c[i]);
+                CHECK(id == ids_c[i]);
+                ++i;
+            }
+            CHECK(i == ids_n);
+        }
     }
+
 }
 

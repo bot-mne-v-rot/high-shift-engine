@@ -11,7 +11,16 @@ namespace {
         bool operator!=(const SomeComponent &) const = default;
     };
 
+    struct IdComponent {
+        using Storage = ecs::VecStorage<IdComponent>;
+        ecs::Id id;
+
+        bool operator==(const IdComponent &) const = default;
+        bool operator!=(const IdComponent &) const = default;
+    };
+
     static_assert(ecs::Component<SomeComponent>);
+    static_assert(ecs::Component<IdComponent>);
 }
 
 TEST_SUITE("ecs/storages/VecStorage") {
@@ -24,7 +33,7 @@ TEST_SUITE("ecs/storages/VecStorage") {
     }
 
     TEST_CASE("insert") {
-        SomeComponent component { 3 };
+        SomeComponent component{3};
         ecs::Id id = 100;
 
         ecs::VecStorage<SomeComponent> storage;
@@ -42,7 +51,7 @@ TEST_SUITE("ecs/storages/VecStorage") {
             CHECK(storage.size() == 1);
         }
 
-        SomeComponent c1 { 3 }, c2 { 4 }, c3 { 5 };
+        SomeComponent c1{3}, c2{4}, c3{5};
         ecs::Id id1 = 10, id2 = 20, id3 = 30;
 
         storage.insert(id2, c2);
@@ -72,7 +81,7 @@ TEST_SUITE("ecs/storages/VecStorage") {
     }
 
     TEST_CASE("iterator") {
-        SomeComponent c1 { 3 }, c2 { 4 }, c3 { 5 };
+        SomeComponent c1{3}, c2{4}, c3{5};
         ecs::Id id1 = 10, id2 = 20, id3 = 30;
 
         ecs::VecStorage<SomeComponent> storage;
@@ -102,6 +111,19 @@ TEST_SUITE("ecs/storages/VecStorage") {
             CHECK(*begin++ == c1);
             CHECK(*begin++ == c3);
             CHECK(begin == end);
+        }
+    }
+
+    TEST_CASE("with id") {
+        ecs::Id ids[] = {1, 2, 50, 100};
+
+        ecs::VecStorage<IdComponent> storage;
+        for (auto id : ids)
+            storage.insert(id, { id });
+
+        for (auto[id, comp] : storage.with_id()) {
+            CHECK(id == comp.id);
+            static_assert(std::is_same_v<decltype(comp), IdComponent &>);
         }
     }
 }

@@ -14,7 +14,85 @@ namespace ecs {
             requires std::is_const_v<std::remove_reference_t<S>>;
             requires IdSetLike<std::remove_cvref_t<S>>;
         };
+
+        template<typename It>
+        concept HasIdGetter = requires(const It it) {{ it.id() } -> std::same_as<Id>; };
     }
+
+    /**
+     * Iterator that adds syntactically convenient way to
+     * obtain components with ids they belong to via
+     * std::pair/std::tuple destructuring.
+     */
+    template<typename It, typename ConstIt>
+    class WithIdIterator {
+    public:
+        using value_type = std::pair<ecs::Id, typename std::iterator_traits<It>::reference>;
+        using reference = value_type;
+        using pointer = value_type *;
+        using difference_type = std::ptrdiff_t;
+        using iterator_category = std::forward_iterator_tag;
+
+        explicit WithIdIterator(It iter) : iter(std::move(iter)) {}
+
+        WithIdIterator() = default;
+
+        reference operator*() const {
+            return {iter.id(), *iter};
+        }
+
+        WithIdIterator &operator++() {
+            ++iter;
+            return *this;
+        }
+
+        WithIdIterator operator++(int) {
+            auto copy = *this;
+            ++iter;
+            return copy;
+        }
+
+        bool operator==(const WithIdIterator &) const = default;
+        bool operator!=(const WithIdIterator &) const = default;
+
+        operator WithIdIterator<ConstIt, ConstIt>() const {
+            return {ConstIt(iter)};
+        }
+
+    private:
+        It iter;
+    };
+
+    /**
+     * Simply holds a pair of iterators to let `for(... : ...)` hook up.
+     *
+     * Every Storage must provide with_id() method
+     * to obtain an instance of this class.
+     */
+    template<typename It, typename ConstIt>
+    class WithIdRange {
+    public:
+        using const_iterator = WithIdIterator<ConstIt, ConstIt>;
+        using iterator = WithIdIterator<It, ConstIt>;
+
+        WithIdRange(It begin, It end)
+                : b(std::move(begin)), e(std::move(end)) {}
+
+        iterator begin() const { return b; }
+
+        iterator end() const { return e; }
+
+        const_iterator cbegin() const { return b; }
+
+        const_iterator cend() const { return e; }
+
+        operator WithIdRange<ConstIt, ConstIt>() const {
+            return {ConstIt(b), ConstIt(e)};
+        }
+
+    private:
+        iterator b, e;
+    };
 
     /**
      * https://stackoverflow.com/questions/60449592/how-do-you-define-a-c-concept-for-the-standard-library-containers
@@ -53,6 +131,12 @@ namespace ecs {
         { b[id] } -> std::same_as<const typename S::value_type &>;
         { b.contains(id) } -> std::same_as<bool>;
         { b.present() } -> detail::ConstLvalueRefToIdSetLike;
+
+        // with_id()
+        requires detail::HasIdGetter<typename S::iterator>;
+        requires detail::HasIdGetter<typename S::const_iterator>;
+        { a.with_id() } -> std::same_as<WithIdRange<typename S::iterator, typename S::const_iterator>>;
+        { b.with_id() } -> std::same_as<WithIdRange<typename S::const_iterator, typename S::const_iterator>>;
     };
 
     /**

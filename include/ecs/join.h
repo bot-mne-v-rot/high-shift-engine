@@ -8,23 +8,19 @@
 
 namespace ecs {
     namespace detail {
-        template<typename S>
-        requires(Storage<std::remove_const_t<S>>)
+        template<typename S> requires(Storage<std::remove_const_t<S>>)
         using ComponentRef =
         typename std::iterator_traits<decltype(std::declval<S>().begin())>::reference;
 
-        template<typename ...Storages>
-        requires(Storage<std::remove_const_t<Storages>> && ...)
+        template<typename ...Storages> requires(Storage<std::remove_const_t<Storages>> &&...)
         using JoinedMask =
         decltype((std::declval<Storages>().present() & ...));
 
-        template<typename ...Storages>
-        requires(Storage<std::remove_const_t<Storages>> && ...)
+        template<typename ...Storages> requires(Storage<std::remove_const_t<Storages>> &&...)
         using JoinedMaskIterator =
         typename JoinedMask<Storages...>::iterator;
 
-        template<typename ...Storages>
-        requires(Storage<std::remove_const_t<Storages>> && ...)
+        template<typename ...Storages> requires(Storage<std::remove_const_t<Storages>> &&...)
         class JoinIterator {
         public:
             using value_type = std::tuple<detail::ComponentRef<Storages>...>;
@@ -38,7 +34,6 @@ namespace ecs {
             JoinIterator &operator=(const JoinIterator &) = default;
 
             reference operator*() const;
-            pointer operator->() const;
 
             JoinIterator &operator++();
             JoinIterator operator++(int);
@@ -46,17 +41,18 @@ namespace ecs {
             bool operator==(const JoinIterator &other) const = default;
             bool operator!=(const JoinIterator &other) const = default;
 
+            ecs::Id id() const;
+
             explicit JoinIterator(Storages *...storage_ptrs,
                                   detail::JoinedMaskIterator<Storages...> mask_iterator)
                     : storages(storage_ptrs...), mask_iterator(std::move(mask_iterator)) {}
 
-        private:
+        protected:
             std::tuple<Storages *...> storages;
             detail::JoinedMaskIterator<Storages...> mask_iterator;
         };
 
-        template<typename ...Storages>
-        requires(Storage<std::remove_const_t<Storages>> && ...)
+        template<typename ...Storages> requires(Storage<std::remove_const_t<Storages>> &&...)
         class JoinRange {
         public:
             using const_iterator = JoinIterator<Storages...>;
@@ -64,7 +60,7 @@ namespace ecs {
             using Mask = JoinedMask<Storages...>;
 
             JoinRange(iterator begin, iterator end, std::unique_ptr<Mask> keep_alive)
-                    : b(begin), e(end), keep_alive(std::move(keep_alive)) {}
+                    : b(std::move(begin)), e(std::move(end)), keep_alive(std::move(keep_alive)) {}
 
             iterator begin() const;
             iterator end() const;
@@ -77,8 +73,13 @@ namespace ecs {
     }
 
     template<typename ...Storages>
-    requires(Storage<std::remove_const_t<Storages>> && ...)
+    requires(Storage<std::remove_const_t<Storages>> &&...)
     inline detail::JoinRange<Storages...> join(Storages &...storages);
+
+
+    template<typename ...Storages>
+    requires(Storage<std::remove_const_t<Storages>> &&...)
+    inline detail::JoinRange<Storages...> join_id(Storages &...storages);
 }
 
 #include "ecs/detail/join_impl.h"

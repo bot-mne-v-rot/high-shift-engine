@@ -188,6 +188,10 @@ namespace ecs {
             return copy;
         }
 
+        Id id() const {
+            return *set_iter;
+        }
+
         bool operator==(const iterator_template &other) const = default;
         bool operator!=(const iterator_template &other) const = default;
 
@@ -233,6 +237,16 @@ namespace ecs {
     template<typename T>
     typename VecStorage<T>::const_iterator VecStorage<T>::end() const {
         return cend();
+    }
+
+    template<typename T>
+    auto VecStorage<T>::with_id() -> WithIdRange<iterator, const_iterator> {
+        return { begin(), end() };
+    }
+
+    template<typename T>
+    auto VecStorage<T>::with_id() const -> WithIdRange<const_iterator, const_iterator> {
+        return { begin(), end() };
     }
 }
 

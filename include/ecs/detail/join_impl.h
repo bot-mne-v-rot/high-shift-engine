@@ -69,8 +69,8 @@ namespace ecs {
 
         template<typename ...Storages>
         requires(Storage <std::remove_const_t<Storages>> &&...)
-        inline auto JoinIterator<Storages...>::operator->() const -> pointer {
-            return deref_to_ptr_storages_tuple(storages, *mask_iterator);
+        inline ecs::Id JoinIterator<Storages...>::id() const {
+            return *mask_iterator;
         }
     }
 

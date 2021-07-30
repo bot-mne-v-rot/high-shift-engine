@@ -55,6 +55,8 @@ namespace ecs {
             bool operator==(const iterator_template &other) const = default;
             bool operator!=(const iterator_template &other) const = default;
 
+            ecs::Id id() const;
+
         private:
             using MaskIterator = typename IdSetType::const_iterator;
             MaskIterator mask_iterator;
@@ -73,6 +75,9 @@ namespace ecs {
         const_iterator end() const;
         const_iterator cbegin() const;
         const_iterator cend() const;
+
+        WithIdRange<iterator, const_iterator> with_id();
+        WithIdRange<const_iterator, const_iterator> with_id() const;
 
     private:
         IdSetType mask;

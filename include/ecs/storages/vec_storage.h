@@ -25,6 +25,7 @@ namespace ecs {
 
         template<typename Ref, typename Ptr>
         class iterator_template;
+
         using iterator = iterator_template<reference, T *>;
         using const_iterator = iterator_template<const_reference, const T *>;
 
@@ -67,6 +68,9 @@ namespace ecs {
         const_iterator end() const;
         const_iterator cbegin() const;
         const_iterator cend() const;
+
+        WithIdRange<iterator, const_iterator> with_id();
+        WithIdRange<const_iterator, const_iterator> with_id() const;
 
         const IdSet &present() const;
 

@@ -163,8 +163,8 @@ namespace ecs {
         MutStorageInterface() = default;
 
         template<MutStorage S>
-        explicit MutStorageInterface(S &s, uint32_t resource_id)
-                : storage(&s), resource_id(resource_id) {
+        explicit MutStorageInterface(S &s, uint32_t res_id)
+                : storage(&s), res_id(res_id) {
             erase_ptr = [](void *s, Id id) {
                 static_cast<S *>(s)->erase(id);
             };
@@ -174,11 +174,14 @@ namespace ecs {
             erase_ptr(storage, id);
         }
 
-        const uint32_t resource_id = 0;
+        uint32_t resource_id() const {
+            return res_id;
+        }
 
     private:
         void *storage = nullptr;
         void (*erase_ptr)(void *, Id id) = nullptr;
+        uint32_t res_id = 0;
     };
 }
 

@@ -89,8 +89,8 @@ namespace ecs {
             resources[id] = std::shared_ptr<R>();
 
             if constexpr(MutStorage<R>)
-                _storages.erase(std::find(_storages.begin(), _storages.end(), [](auto storage) {
-                    storage.id == id;
+                _storages.erase(std::find_if(_storages.begin(), _storages.end(), [](auto &storage) {
+                    return storage.resource_id() == id;
                 }));
         }
 

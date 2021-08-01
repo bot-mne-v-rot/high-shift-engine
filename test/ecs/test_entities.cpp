@@ -55,5 +55,11 @@ TEST_SUITE("ecs/entities") {
 
             CHECK(!entities.is_alive(id));
         }
+
+        SUBCASE("storage erasure") {
+            world.erase<ComponentA::Storage>();
+            CHECK(!world.has<ComponentA::Storage>());
+        }
+
     }
 }

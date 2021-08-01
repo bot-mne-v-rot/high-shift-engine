@@ -151,6 +151,35 @@ namespace ecs {
         { a.insert(id, rval_ref) } -> std::same_as<void>;
         { a.erase(id) } -> std::same_as<void>;
     } && Storage<S>;
+
+    /**
+     * Interface to Storage's erase method
+     * exploiting type-erasure technique
+     * without involving inheritance and
+     * virtual methods.
+     */
+    class MutStorageInterface {
+    public:
+        MutStorageInterface() = default;
+
+        template<MutStorage S>
+        explicit MutStorageInterface(S &s, uint32_t resource_id)
+                : storage(&s), resource_id(resource_id) {
+            erase_ptr = [](void *s, Id id) {
+                static_cast<S *>(s)->erase(id);
+            };
+        }
+
+        void erase(Id id) {
+            erase_ptr(storage, id);
+        }
+
+        const uint32_t resource_id = 0;
+
+    private:
+        void *storage = nullptr;
+        void (*erase_ptr)(void *, Id id) = nullptr;
+    };
 }
 
 #endif //HIGH_SHIFT_STORAGE_H

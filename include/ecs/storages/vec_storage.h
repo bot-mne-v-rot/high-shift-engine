@@ -5,8 +5,6 @@
 #include "ecs/storage.h"
 #include "ecs/id_set.h"
 
-#include <vector>
-
 namespace ecs {
     /**
      * Container to store all the components contiguously.

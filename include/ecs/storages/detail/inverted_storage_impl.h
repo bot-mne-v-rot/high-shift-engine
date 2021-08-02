@@ -67,6 +67,12 @@ namespace ecs {
     }
 
     template<Storage S>
+    template<typename Ref, typename Ptr>
+    ecs::Id InvertedStorage<S>::iterator_template<Ref, Ptr>::id() const {
+        return *mask_iterator;
+    }
+
+    template<Storage S>
     auto InvertedStorage<S>::begin() -> iterator {
         return { mask.begin() };
     }
@@ -94,5 +100,15 @@ namespace ecs {
     template<Storage S>
     auto InvertedStorage<S>::end() const -> const_iterator {
         return cend();
+    }
+
+    template<Storage S>
+    auto InvertedStorage<S>::with_id() -> WithIdView<iterator, const_iterator> {
+        return { begin(), end() };
+    }
+
+    template<Storage S>
+    auto InvertedStorage<S>::with_id() const -> WithIdView<const_iterator, const_iterator> {
+        return { begin(), end() };
     }
 }

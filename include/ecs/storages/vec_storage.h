@@ -3,13 +3,9 @@
 
 #include "ecs/component.h"
 #include "ecs/storage.h"
-#include "ecs/id_set.h"
-
-#include <vector>
 
 namespace ecs {
     /**
-     * Container to store all the components contiguously.
      * Id and index in the internal container are equal.
      * Provides better cache utilization if the component
      * is used on most components.
@@ -25,6 +21,7 @@ namespace ecs {
 
         template<typename Ref, typename Ptr>
         class iterator_template;
+
         using iterator = iterator_template<reference, T *>;
         using const_iterator = iterator_template<const_reference, const T *>;
 
@@ -67,6 +64,9 @@ namespace ecs {
         const_iterator end() const;
         const_iterator cbegin() const;
         const_iterator cend() const;
+
+        WithIdView<iterator, const_iterator> with_id();
+        WithIdView<const_iterator, const_iterator> with_id() const;
 
         const IdSet &present() const;
 

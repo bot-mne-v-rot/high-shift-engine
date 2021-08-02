@@ -3,6 +3,18 @@
 #include "ecs/world.h"
 
 TEST_SUITE("ecs/world") {
+    TEST_CASE("double get") {
+        ecs::World world;
+
+        int a = 5, b = 6;
+        auto u = std::make_unique<int>(a);
+        world.insert<int>(std::move(u));
+
+        CHECK(world.get<int>() == a);
+        world.get<int>() = b;
+        CHECK(world.get<int>() == b);
+    }
+
     TEST_CASE("insert") {
         ecs::World world;
 

@@ -1,10 +1,10 @@
 #include "doctest.h"
 
-#include "ecs/storages/vec_storage.h"
+#include "ecs/storages/sparse_vec_storage.h"
 
 namespace {
     struct SomeComponent {
-        using Storage = ecs::VecStorage<SomeComponent>;
+        using Storage = ecs::SparseVecStorage<SomeComponent>;
         int a = 0;
 
         bool operator==(const SomeComponent &) const = default;
@@ -12,7 +12,7 @@ namespace {
     };
 
     struct IdComponent {
-        using Storage = ecs::VecStorage<IdComponent>;
+        using Storage = ecs::SparseVecStorage<IdComponent>;
         ecs::Id id;
 
         bool operator==(const IdComponent &) const = default;
@@ -23,9 +23,9 @@ namespace {
     static_assert(ecs::Component<IdComponent>);
 }
 
-TEST_SUITE("ecs/storages/VecStorage") {
+TEST_SUITE("ecs/storages/SparseVecStorage") {
     TEST_CASE("empty") {
-        ecs::VecStorage<SomeComponent> storage;
+        ecs::SparseVecStorage<SomeComponent> storage;
         CHECK(storage.size() == 0);
         CHECK(storage.empty());
         CHECK(!storage.contains(0));
@@ -36,7 +36,7 @@ TEST_SUITE("ecs/storages/VecStorage") {
         SomeComponent component{3};
         ecs::Id id = 100;
 
-        ecs::VecStorage<SomeComponent> storage;
+        ecs::SparseVecStorage<SomeComponent> storage;
         CHECK(!storage.contains(id));
 
         storage.insert(id, component);
@@ -47,7 +47,6 @@ TEST_SUITE("ecs/storages/VecStorage") {
         }
 
         SUBCASE("enough space") {
-            CHECK(storage.capacity() > id);
             CHECK(storage.size() == 1);
         }
 
@@ -68,7 +67,6 @@ TEST_SUITE("ecs/storages/VecStorage") {
         }
 
         SUBCASE("enough space again") {
-            CHECK(storage.capacity() > id3);
             CHECK(storage.size() == 4);
         }
 
@@ -84,7 +82,7 @@ TEST_SUITE("ecs/storages/VecStorage") {
         SomeComponent c1{3}, c2{4}, c3{5};
         ecs::Id id1 = 10, id2 = 20, id3 = 30;
 
-        ecs::VecStorage<SomeComponent> storage;
+        ecs::SparseVecStorage<SomeComponent> storage;
         storage.insert(id2, c2);
         storage.insert(id1, c1);
         storage.insert(id3, c3);
@@ -93,9 +91,9 @@ TEST_SUITE("ecs/storages/VecStorage") {
             auto begin = storage.begin();
             auto end = storage.end();
 
-            CHECK(*begin == c1);
-            ++begin;
             CHECK(*begin == c2);
+            ++begin;
+            CHECK(*begin == c1);
             ++begin;
             CHECK(*begin == c3);
             ++begin;
@@ -108,8 +106,8 @@ TEST_SUITE("ecs/storages/VecStorage") {
             auto begin = storage.begin();
             auto end = storage.end();
 
-            CHECK(*begin++ == c1);
             CHECK(*begin++ == c3);
+            CHECK(*begin++ == c1);
             CHECK(begin == end);
         }
     }
@@ -117,7 +115,7 @@ TEST_SUITE("ecs/storages/VecStorage") {
     TEST_CASE("with id") {
         ecs::Id ids[] = {1, 2, 50, 100};
 
-        ecs::VecStorage<IdComponent> storage;
+        ecs::SparseVecStorage<IdComponent> storage;
         for (auto id : ids)
             storage.insert(id, { id });
 

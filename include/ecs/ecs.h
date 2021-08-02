@@ -7,6 +7,7 @@
 #include "ecs/dispatcher.h"
 #include "ecs/component.h"
 #include "ecs/join.h"
+#include "ecs/entities.h"
 #include "ecs/storages/storages.h"
 
 #endif //HIGH_SHIFT_ECS_H

@@ -74,12 +74,10 @@ namespace ecs {
         }
     }
 
-    inline void IdSet::erase(Id id) {
-        if (cp <= id)
-            return;
-
-        if (contains(id))
-            --sz;
+    inline bool IdSet::erase(Id id) {
+        if (!contains(id))
+            return false;
+        --sz;
 
         uint32_t pos = id & lower_bits;
         id >>= shift;
@@ -92,6 +90,7 @@ namespace ecs {
             id >>= shift;
             detail::place_bit(levels[i][id], pos, bit);
         }
+        return true;
     }
 
     inline IdSet::iterator IdSet::erase(const_iterator it) {

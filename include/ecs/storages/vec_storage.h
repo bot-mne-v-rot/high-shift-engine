@@ -3,11 +3,9 @@
 
 #include "ecs/component.h"
 #include "ecs/storage.h"
-#include "ecs/id_set.h"
 
 namespace ecs {
     /**
-     * Container to store all the components contiguously.
      * Id and index in the internal container are equal.
      * Provides better cache utilization if the component
      * is used on most components.

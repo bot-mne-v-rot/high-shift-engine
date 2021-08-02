@@ -44,7 +44,7 @@ namespace ecs {
         using iterator = const_iterator;
 
         void insert(Id id);
-        void erase(Id id);
+        bool erase(Id id); // true if element was present
         iterator erase(const_iterator it);
         bool contains(Id id) const;
 

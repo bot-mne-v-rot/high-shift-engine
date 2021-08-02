@@ -89,7 +89,7 @@ namespace ecs {
         public:
             using reference = Ref;
             using pointer = Ptr;
-            using value_type = EmptyComponent;
+            using value_type = T;
             using difference_type = std::ptrdiff_t;
             using iterator_category = std::forward_iterator_tag;
 

@@ -8,7 +8,7 @@ set(LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib")
 set(UNIVERSAL_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib")
 
 # Target
-set(TEST_SOURCES test/test.cpp test/ecs/test_world.cpp test/ecs/test_system.cpp test/ecs/test_dispatcher.cpp test/ecs/storages/test_vec_storage.cpp test/ecs/test_id_set.cpp test/ecs/test_join.cpp test/ecs/storages/test_inverted_storage.cpp test/ecs/test_entities.cpp)
+set(TEST_SOURCES test/test.cpp test/ecs/test_world.cpp test/ecs/test_system.cpp test/ecs/test_dispatcher.cpp test/ecs/storages/test_vec_storage.cpp test/ecs/test_id_set.cpp test/ecs/test_join.cpp test/ecs/storages/test_inverted_storage.cpp test/ecs/test_entities.cpp test/ecs/storages/test_sparse_storage.cpp)
 set(TEST_TARGET tests)
 
 include_directories(include)

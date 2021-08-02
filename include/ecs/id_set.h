@@ -395,7 +395,7 @@ namespace ecs {
 }
 
 namespace std {
-    void swap(ecs::IdSet &a, ecs::IdSet &b) {
+    inline void swap(ecs::IdSet &a, ecs::IdSet &b) {
         a.swap(b);
     }
 }

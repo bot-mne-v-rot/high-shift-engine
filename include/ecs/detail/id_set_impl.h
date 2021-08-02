@@ -75,6 +75,7 @@ namespace ecs {
         for (std::size_t lvl = 0; lvl + 1 < levels_num; ++lvl)
             if (other.levels[lvl])
                 memcpy(levels[lvl], other.levels[lvl], lvl_cp[lvl] * sizeof(uint64_t));
+        sz = other.sz;
 
         return *this;
     }
@@ -85,6 +86,7 @@ namespace ecs {
 
     inline IdSet &IdSet::operator=(IdSet &&other) {
         swap(other);
+        return *this;
     }
 
     inline void IdSet::swap(IdSet &other) {
@@ -93,6 +95,8 @@ namespace ecs {
             std::swap(levels[i], other.levels[i]);
             std::swap(lvl_cp[i], other.lvl_cp[i]);
         }
+        std::swap(cp, other.cp);
+        std::swap(sz, other.sz);
     }
 
     inline void IdSet::insert(Id id) {

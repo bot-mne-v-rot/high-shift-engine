@@ -62,6 +62,39 @@ namespace ecs {
 
     inline IdSet::IdSet() = default;
 
+    inline IdSet::IdSet(const IdSet &other) {
+        *this = other;
+    }
+
+    inline IdSet &IdSet::operator=(const IdSet &other) {
+        if (this == &other)
+            return *this;
+
+        reserve(other.capacity());
+        level3 = other.level3;
+        for (std::size_t lvl = 0; lvl + 1 < levels_num; ++lvl)
+            if (other.levels[lvl])
+                memcpy(levels[lvl], other.levels[lvl], lvl_cp[lvl] * sizeof(uint64_t));
+
+        return *this;
+    }
+
+    inline IdSet::IdSet(IdSet &&other) {
+        swap(other);
+    }
+
+    inline IdSet &IdSet::operator=(IdSet &&other) {
+        swap(other);
+    }
+
+    inline void IdSet::swap(IdSet &other) {
+        std::swap(level3, other.level3);
+        for (std::size_t i = 0; i + 1 < levels_num; ++i) {
+            std::swap(levels[i], other.levels[i]);
+            std::swap(lvl_cp[i], other.lvl_cp[i]);
+        }
+    }
+
     inline void IdSet::insert(Id id) {
         reserve(id + 1);
         if (!contains(id))

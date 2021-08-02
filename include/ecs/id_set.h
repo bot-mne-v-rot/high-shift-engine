@@ -39,6 +39,12 @@ namespace ecs {
 
         IdSet();
 
+        IdSet(const IdSet &);
+        IdSet &operator=(const IdSet &);
+
+        IdSet(IdSet &&);
+        IdSet &operator=(IdSet &&);
+
         class const_iterator;
 
         using iterator = const_iterator;
@@ -57,6 +63,8 @@ namespace ecs {
         void reserve(std::size_t n);
 
         void clear();
+
+        void swap(IdSet &other);
 
         ~IdSet();
 
@@ -384,6 +392,12 @@ namespace ecs {
     ecs_define_id_set_iterator(EmptyIdSet);
 
     static_assert(IdSetLike<EmptyIdSet>);
+}
+
+namespace std {
+    void swap(ecs::IdSet &a, ecs::IdSet &b) {
+        a.swap(b);
+    }
 }
 
 // Implementation should be visible to make inlining possible.

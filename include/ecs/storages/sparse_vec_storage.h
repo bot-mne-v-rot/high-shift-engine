@@ -121,6 +121,13 @@ namespace ecs {
     };
 }
 
+namespace std {
+    template<typename T>
+    void swap(ecs::SparseVecStorage<T> &a, ecs::SparseVecStorage<T> &b) {
+        a.swap(b);
+    }
+}
+
 #include "ecs/storages/detail/sparse_vec_storage_impl.h"
 
 #endif //HIGH_SHIFT_SPARSE_VEC_STORAGE_H

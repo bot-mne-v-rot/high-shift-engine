@@ -526,4 +526,50 @@ namespace ecs {
     bool IdSetIterator<S>::operator!=(const IdSetIterator <S> &other) const {
         return set != other.set || pos != other.pos;
     }
+
+    template<IdSetLike Set, typename Fn>
+    void foreach(const Set &set, Fn &&f) {
+        std::size_t lvl3_cp = set.level_capacity(3);
+        std::size_t lvl2_cp = set.level_capacity(2);
+        std::size_t lvl1_cp = set.level_capacity(1);
+        std::size_t lvl0_cp = set.level_capacity(0);
+
+        if (!lvl3_cp)
+            return;
+
+        uint64_t lvl3_data = set.level_data(3, 0);
+        while (lvl3_data) {
+            std::size_t lvl2 = __builtin_ctzll(lvl3_data); // get right-most bit
+            if (lvl2 >= lvl2_cp)
+                return;
+
+            uint64_t lvl2_data = set.level_data(2, lvl2);
+            while (lvl2_data) {
+                std::size_t lvl1 = (lvl2 << IdSet::shift) |
+                                   __builtin_ctzll(lvl2_data); // get right-most bit
+                if (lvl1 >= lvl1_cp)
+                    return;
+
+                uint64_t lvl1_data = set.level_data(1, lvl1);
+                while (lvl1_data) {
+                    std::size_t lvl0 = (lvl1 << IdSet::shift) |
+                                       __builtin_ctzll(lvl1_data); // get right-most bit
+                    if (lvl0 >= lvl0_cp)
+                        return;
+
+                    uint64_t lvl0_data = set.level_data(0, lvl0);
+
+                    while (lvl0_data) {
+                        uint64_t pos = (lvl0 << IdSet::shift) |
+                                       __builtin_ctzll(lvl0_data); // get right-most bit
+                        f(pos);
+                        lvl0_data &= (lvl0_data - 1); // clear right-most bit
+                    }
+                    lvl1_data &= (lvl1_data - 1); // clear right-most bit
+                }
+                lvl2_data &= (lvl2_data - 1); // clear right-most bit
+            }
+            lvl3_data &= (lvl3_data - 1); // clear right-most bit
+        }
+    }
 }

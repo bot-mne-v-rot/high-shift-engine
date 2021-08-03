@@ -8,8 +8,12 @@ set(LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib")
 set(UNIVERSAL_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib")
 
 # Target
-set(TEST_SOURCES test/test.cpp test/ecs/test_world.cpp test/ecs/test_system.cpp test/ecs/test_dispatcher.cpp test/ecs/storages/test_vec_storage.cpp test/ecs/test_id_set.cpp test/ecs/test_join.cpp test/ecs/storages/test_inverted_storage.cpp test/ecs/test_entities.cpp include/render/shader_storage.h test/render/test_renderer_storage.cpp include/render/detail/shader_storage_impl.h include/render/render_system.h test/render/test_render_system.cpp)
+
 set(TEST_TARGET tests)
+
+file(GLOB_RECURSE TEST_SOURCES
+        "${PROJECT_SOURCE_DIR}/test/*.h"
+        "${PROJECT_SOURCE_DIR}/test/*.cpp")
 
 include_directories(include)
 add_executable(${PROJECT_NAME} src/main.cpp ${SOURCES})
@@ -60,6 +64,6 @@ include_directories("${LIB_DIR}/other")
 
 #examples
 file(GLOB EXAMPLE_SOURCES examples/*)
-foreach(exampledir ${EXAMPLE_SOURCES})
+foreach (exampledir ${EXAMPLE_SOURCES})
     add_subdirectory(${exampledir} EXCLUDE_FROM_ALL)
-endforeach()
+endforeach ()

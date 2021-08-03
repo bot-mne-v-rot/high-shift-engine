@@ -20,12 +20,12 @@ namespace ecs {
     }
 
     template<Storage S>
-    auto InvertedStorage<S>::operator[](Id) -> reference {
+    auto InvertedStorage<S>::operator[](Id) -> Reference {
         return dummy;
     }
 
     template<Storage S>
-    auto InvertedStorage<S>::operator[](Id) const -> const_reference {
+    auto InvertedStorage<S>::operator[](Id) const -> ConstReference {
         return dummy;
     }
 

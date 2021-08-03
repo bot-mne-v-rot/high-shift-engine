@@ -12,13 +12,9 @@ namespace ecs {
     public:
         using IdSetType = IdSetNot<std::remove_cvref_t<decltype(std::declval<S>().present())>>;
 
-        using value_type = EmptyComponent;
-        using reference = value_type &;
-        using const_reference = const value_type &;
-        using pointer = value_type *;
-        using const_pointer = const value_type *;
-        using difference_type = std::ptrdiff_t;
-        using size_type = std::size_t;
+        using Component = EmptyComponent;
+        using Reference = Component &;
+        using ConstReference = const Component &;
 
         explicit InvertedStorage(const S &storage) : storage(storage), mask(~storage.present()) {}
 
@@ -28,8 +24,8 @@ namespace ecs {
 
         bool contains(Id id) const;
 
-        reference operator[](Id index);
-        const_reference operator[](Id index) const;
+        Reference operator[](Id index);
+        ConstReference operator[](Id index) const;
 
         const IdSetType &present() const;
 

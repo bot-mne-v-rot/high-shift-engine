@@ -13,11 +13,9 @@ namespace ecs {
     template<typename T>
     class VecStorage {
     public:
-        using value_type = T;
-        using reference = T &;
-        using const_reference = const T &;
-        using difference_type = std::ptrdiff_t;
-        using size_type = std::size_t;
+        using Component = T;
+        using Reference = Component &;
+        using ConstReference = const Component &;
 
         VecStorage();
         // Preallocates memory for n components

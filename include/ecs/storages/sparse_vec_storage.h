@@ -20,11 +20,7 @@ namespace ecs {
     template<typename T>
     class SparseVecStorage {
     public:
-        using value_type = T;
-        using reference = T &;
-        using const_reference = const T &;
-        using difference_type = std::ptrdiff_t;
-        using size_type = std::size_t;
+        using Component = T;
 
         SparseVecStorage() = default;
         // Preallocates memory for dense of `n` components and sparse of `ids`

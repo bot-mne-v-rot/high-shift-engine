@@ -155,98 +155,32 @@ namespace ecs {
         return mask;
     }
 
-    template<typename T>
-    template<typename Ref, typename Ptr>
-    class VecStorage<T>::iterator_template {
-    public:
-        using reference = Ref;
-        using pointer = Ptr;
-        using value_type = T;
-        using difference_type = std::ptrdiff_t;
-        using iterator_category = std::forward_iterator_tag;
-
-        iterator_template() = default;
-        iterator_template(const iterator_template &) = default;
-        iterator_template &operator=(const iterator_template &) = default;
-
-        reference operator*() const {
-            return storage->data[*set_iter];
-        }
-
-        pointer operator->() const {
-            return storage->data + (*set_iter);
-        }
-
-        iterator_template &operator++() {
-            ++set_iter;
-            return *this;
-        }
-
-        iterator_template operator++(int) {
-            auto copy = *this;
-            ++(*this);
-            return copy;
-        }
-
-        Id id() const {
-            return *set_iter;
-        }
-
-        bool operator==(const iterator_template &other) const = default;
-        bool operator!=(const iterator_template &other) const = default;
-
-        operator iterator_template<const T &, const T *>() const {
-            return iterator_template<const T &, const T *>(set_iter, storage);
-        }
-
-    private:
-        IdSet::iterator set_iter;
-
-        friend VecStorage;
-        VecStorage *storage;
-
-        iterator_template(IdSet::iterator set_iter, VecStorage *storage)
-                : set_iter(set_iter), storage(storage) {}
-    };
-
-    template<typename T>
-    typename VecStorage<T>::iterator VecStorage<T>::begin() {
-        return iterator(mask.begin(), this);
+    template<typename T, typename Fn>
+    void foreach(const VecStorage<T> &storage, Fn &&f) {
+        ecs::foreach(storage.present(), [&](auto id) {
+            f(storage[id]);
+        });
     }
 
-    template<typename T>
-    typename VecStorage<T>::iterator VecStorage<T>::end() {
-        return iterator(mask.end(), this);
+    template<typename T, typename Fn>
+    void foreach(VecStorage<T> &storage, Fn &&f) {
+        ecs::foreach(storage.present(), [&](auto id) {
+            f(storage[id]);
+        });
     }
 
-    template<typename T>
-    typename VecStorage<T>::const_iterator VecStorage<T>::cbegin() const {
-        return const_iterator(mask.begin(), this);
+    template<typename T, typename Fn>
+    void foreach_with_id(const VecStorage<T> &storage, Fn &&f) {
+        ecs::foreach(storage.mask, [&](auto id) {
+            f(id, storage[id]);
+        });
     }
 
-    template<typename T>
-    typename VecStorage<T>::const_iterator VecStorage<T>::cend() const {
-        return const_iterator(mask.end(), this);
-    }
-
-    template<typename T>
-    typename VecStorage<T>::const_iterator VecStorage<T>::begin() const {
-        return cbegin();
-    }
-
-    template<typename T>
-    typename VecStorage<T>::const_iterator VecStorage<T>::end() const {
-        return cend();
-    }
-
-    template<typename T>
-    auto VecStorage<T>::with_id() -> WithIdView<iterator, const_iterator> {
-        return { begin(), end() };
-    }
-
-    template<typename T>
-    auto VecStorage<T>::with_id() const -> WithIdView<const_iterator, const_iterator> {
-        return { begin(), end() };
+    template<typename T, typename Fn>
+    void foreach_with_id(VecStorage<T> &storage, Fn &&f) {
+        ecs::foreach(storage.mask, [&](auto id) {
+            f(id, storage[id]);
+        });
     }
 }
 

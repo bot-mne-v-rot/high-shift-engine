@@ -90,27 +90,25 @@ TEST_SUITE("ecs/storages/VecStorage") {
         storage.insert(id3, c3);
 
         SUBCASE("go through") {
-            auto begin = storage.begin();
-            auto end = storage.end();
+            std::vector<SomeComponent> visited;
 
-            CHECK(*begin == c1);
-            ++begin;
-            CHECK(*begin == c2);
-            ++begin;
-            CHECK(*begin == c3);
-            ++begin;
-            CHECK(begin == end);
+            ecs::foreach(storage, [&](auto &comp) {
+                visited.push_back(comp);
+            });
+
+            CHECK(visited == std::vector{c1, c2, c3});
         }
 
         storage.erase(id2);
 
         SUBCASE("go through again") {
-            auto begin = storage.begin();
-            auto end = storage.end();
+            std::vector<SomeComponent> visited;
 
-            CHECK(*begin++ == c1);
-            CHECK(*begin++ == c3);
-            CHECK(begin == end);
+            ecs::foreach(storage, [&](auto &comp) {
+                visited.push_back(comp);
+            });
+
+            CHECK(visited == std::vector{c1, c3});
         }
     }
 
@@ -119,11 +117,11 @@ TEST_SUITE("ecs/storages/VecStorage") {
 
         ecs::VecStorage<IdComponent> storage;
         for (auto id : ids)
-            storage.insert(id, { id });
+            storage.insert(id, {id});
 
-        for (auto[id, comp] : storage.with_id()) {
+        ecs::foreach_with_id(storage, [](auto id, auto &comp) {
             CHECK(id == comp.id);
             static_assert(std::is_same_v<decltype(comp), IdComponent &>);
-        }
+        });
     }
 }

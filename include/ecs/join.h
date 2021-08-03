@@ -10,7 +10,7 @@ namespace ecs {
     namespace detail {
         template<typename S> requires(Storage<std::remove_const_t<S>>)
         using ComponentRef =
-        typename std::iterator_traits<decltype(std::declval<S>().begin())>::reference;
+        decltype(std::declval<S>()[std::declval<Id>()]);
 
         template<typename ...Storages> requires(Storage<std::remove_const_t<Storages>> &&...)
         using JoinedMask =

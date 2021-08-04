@@ -10,7 +10,7 @@ namespace ecs {
     namespace detail {
         template<typename S> requires(Storage<std::remove_const_t<S>>)
         using ComponentRef =
-        typename std::iterator_traits<decltype(std::declval<S>().begin())>::reference;
+        decltype(std::declval<S>()[std::declval<Id>()]);
 
         template<typename ...Storages> requires(Storage<std::remove_const_t<Storages>> &&...)
         using JoinedMask =
@@ -104,11 +104,43 @@ namespace ecs {
     template<typename ...Storages> requires(Storage<std::remove_const_t<Storages>> &&...)
     using JoinWithIdView = detail::JoinView<detail::JoinWithIdIterator<Storages...>, detail::JoinedMask<Storages...>>;
 
-    template<typename ...Storages>
-    inline JoinView<Storages...> join(Storages &...storages);
+    // Umm, well, workflow with non-terminating variadic templates is kinda tough...
 
-    template<typename ...Storages>
-    inline JoinView<Storages...> join_with_id(Storages &...storages);
+    template<typename A, typename B, typename Fn>
+    inline void joined_foreach(A &a, B &b, Fn &&f);
+
+    template<typename A, typename B, typename C, typename Fn>
+    inline void joined_foreach(A &a, B &b, C &c, Fn &&f);
+
+    template<typename A, typename B, typename C, typename D, typename Fn>
+    inline void joined_foreach(A &a, B &b, C &c, D &d, Fn &&f);
+
+    template<typename A, typename B, typename C, typename D, typename E, typename Fn>
+    inline void joined_foreach(A &a, B &b, C &c, D &d, E &e, Fn &&f);
+
+    template<typename A, typename B, typename C, typename D, typename E, typename F, typename Fn>
+    inline void joined_foreach(A &a, B &b, C &c, D &d, E &e, F &f, Fn &&fn);
+
+    template<typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename Fn>
+    inline void joined_foreach(A &a, B &b, C &c, D &d, E &e, F &f, G &g, Fn &&fn);
+
+    template<typename A, typename B, typename Fn>
+    inline void joined_foreach_with_id(A &a, B &b, Fn &&f);
+
+    template<typename A, typename B, typename C, typename Fn>
+    inline void joined_foreach_with_id(A &a, B &b, C &c, Fn &&f);
+
+    template<typename A, typename B, typename C, typename D, typename Fn>
+    inline void joined_foreach_with_id(A &a, B &b, C &c, D &d, Fn &&f);
+
+    template<typename A, typename B, typename C, typename D, typename E, typename Fn>
+    inline void joined_foreach_with_id(A &a, B &b, C &c, D &d, E &e, Fn &&f);
+
+    template<typename A, typename B, typename C, typename D, typename E, typename F, typename Fn>
+    inline void joined_foreach_with_id(A &a, B &b, C &c, D &d, E &e, F &f, Fn &&fn);
+
+    template<typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename Fn>
+    inline void joined_foreach_with_id(A &a, B &b, C &c, D &d, E &e, F &f, G &g, Fn &&fn);
 }
 
 #include "ecs/detail/join_impl.h"

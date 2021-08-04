@@ -269,4 +269,21 @@ TEST_SUITE("ecs/storages/IdSet") {
             CHECK(i == ids_n);
         }
     }
+
+    TEST_CASE("foreach") {
+        ecs::IdSet set;
+        constexpr ecs::Id ids[] = {10, 11, 12, 500, 1000, 1020, 5000, 100000, 100001, 1000000, 10000000};
+        constexpr std::size_t ids_n = sizeof(ids) / sizeof(ecs::Id);
+
+        for (ecs::Id id : ids)
+            set.insert(id);
+
+        SUBCASE("go through") {
+            std::size_t i = 0;
+            ecs::foreach(set, [&i, &ids](auto id) {
+                CHECK(ids[i++] == id);
+            });
+            CHECK(i == ids_n);
+        }
+    }
 }

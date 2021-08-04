@@ -13,17 +13,9 @@ namespace ecs {
     template<typename T>
     class VecStorage {
     public:
-        using value_type = T;
-        using reference = T &;
-        using const_reference = const T &;
-        using difference_type = std::ptrdiff_t;
-        using size_type = std::size_t;
-
-        template<typename Ref, typename Ptr>
-        class iterator_template;
-
-        using iterator = iterator_template<reference, T *>;
-        using const_iterator = iterator_template<const_reference, const T *>;
+        using Component = T;
+        using Reference = Component &;
+        using ConstReference = const Component &;
 
         VecStorage();
         // Preallocates memory for n components
@@ -58,19 +50,21 @@ namespace ecs {
 
         void swap(VecStorage<T> &other) noexcept;
 
-        iterator begin();
-        iterator end();
-        const_iterator begin() const;
-        const_iterator end() const;
-        const_iterator cbegin() const;
-        const_iterator cend() const;
-
-        WithIdView<iterator, const_iterator> with_id();
-        WithIdView<const_iterator, const_iterator> with_id() const;
-
         const IdSet &present() const;
 
         ~VecStorage() noexcept;
+
+        template<typename U, typename Fn>
+        friend void foreach(const VecStorage<U> &storage, Fn &&f);
+
+        template<typename U, typename Fn>
+        friend void foreach(VecStorage<U> &storage, Fn &&f);
+
+        template<typename U, typename Fn>
+        friend void foreach_with_id(const VecStorage<U> &storage, Fn &&f);
+
+        template<typename U, typename Fn>
+        friend void foreach_with_id(VecStorage<U> &storage, Fn &&f);
 
     private:
         IdSet mask;

@@ -50,31 +50,44 @@ TEST_SUITE("ecs/join") {
         constexpr std::size_t ids_n = sizeof(ids_c) / sizeof(ecs::Id);
 
         for (ecs::Id id : ids_a)
-            storage_a.insert(id, SomeComponent { id });
+            storage_a.insert(id, SomeComponent{id});
         for (ecs::Id id : ids_b)
-            storage_b.insert(id, OtherComponent { id });
+            storage_b.insert(id, OtherComponent{id});
 
         std::size_t i = 0;
         const SomeComponent::Storage &a = storage_a;
         OtherComponent::Storage &b = storage_b;
 
-        SUBCASE("without id") {
-            for (auto[some, other] : ecs::join(a, b)) {
-                CHECK(some.i == ids_c[i]);
-                CHECK(other.i == ids_c[i]);
-                ++i;
+        SUBCASE("iterator") {
+            SUBCASE("without id") {
+                for (auto[some, other] : ecs::join(a, b)) {
+                    CHECK(some.i == ids_c[i]);
+                    CHECK(other.i == ids_c[i]);
+                    ++i;
+                }
+                CHECK(i == ids_n);
             }
-            CHECK(i == ids_n);
+
+            SUBCASE("with id") {
+                for (auto[id, some, other] : ecs::join_with_id(a, b)) {
+                    CHECK(some.i == ids_c[i]);
+                    CHECK(other.i == ids_c[i]);
+                    CHECK(id == ids_c[i]);
+                    ++i;
+                }
+                CHECK(i == ids_n);
+            }
         }
 
-        SUBCASE("with id") {
-            for (auto[id, some, other] : ecs::join_with_id(a, b)) {
-                CHECK(some.i == ids_c[i]);
-                CHECK(other.i == ids_c[i]);
-                CHECK(id == ids_c[i]);
-                ++i;
+        SUBCASE("foreach") {
+            SUBCASE("without id") {
+                ecs::joined_foreach(a, b, [&](auto &some, auto &other) {
+                    CHECK(some.i == ids_c[i]);
+                    CHECK(other.i == ids_c[i]);
+                    ++i;
+                });
+                CHECK(i == ids_n);
             }
-            CHECK(i == ids_n);
         }
     }
 

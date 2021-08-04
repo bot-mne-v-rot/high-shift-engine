@@ -93,78 +93,29 @@ namespace ecs {
         dense_ids.swap(other.dense_ids);
     }
 
-
-    template<typename T>
-    template<typename Ref, typename Ptr>
-    auto SparseVecStorage<T>::iterator_template<Ref, Ptr>::operator*() const -> reference {
-        return *dense_it;
+    template<typename T, typename Fn>
+    void foreach(const SparseVecStorage<T> &storage, Fn &&f) {
+        for (auto &comp : storage.dense)
+            f(comp);
     }
 
-    template<typename T>
-    template<typename Ref, typename Ptr>
-    auto SparseVecStorage<T>::iterator_template<Ref, Ptr>::operator->() const -> pointer {
-        return &*dense_it;
+    template<typename T, typename Fn>
+    void foreach(SparseVecStorage<T> &storage, Fn &&f) {
+        for (auto &comp : storage.dense)
+            f(comp);
     }
 
-    template<typename T>
-    template<typename Ref, typename Ptr>
-    Id SparseVecStorage<T>::iterator_template<Ref, Ptr>::id() const {
-        return *dense_ids_it;
+    template<typename T, typename Fn>
+    void foreach_with_id(const SparseVecStorage<T> &storage, Fn &&f) {
+        std::size_t size = storage.dense.size();
+        for (std::size_t i = 0; i < size; ++i)
+            f(storage.dense_ids[i], storage.dense[i]);
     }
 
-    template<typename T>
-    template<typename Ref, typename Ptr>
-    auto SparseVecStorage<T>::iterator_template<Ref, Ptr>::operator++() -> iterator_template & {
-        ++dense_it;
-        ++dense_ids_it;
-        return *this;
-    }
-
-    template<typename T>
-    template<typename Ref, typename Ptr>
-    auto SparseVecStorage<T>::iterator_template<Ref, Ptr>::operator++(int) -> iterator_template {
-        auto copy = *this;
-        ++(*this);
-        return copy;
-    }
-
-    template<typename T>
-    auto SparseVecStorage<T>::begin() -> iterator {
-        return iterator(dense.begin(), dense_ids.begin());
-    }
-
-    template<typename T>
-    auto SparseVecStorage<T>::end() -> iterator {
-        return iterator(dense.end(), dense_ids.end());
-    }
-
-    template<typename T>
-    auto SparseVecStorage<T>::cbegin() const -> const_iterator {
-        return const_iterator(dense.begin(), dense_ids.begin());
-    }
-
-    template<typename T>
-    auto SparseVecStorage<T>::cend() const -> const_iterator {
-        return const_iterator(dense.end(), dense_ids.end());
-    }
-
-    template<typename T>
-    auto SparseVecStorage<T>::begin() const -> const_iterator {
-        return cbegin();
-    }
-
-    template<typename T>
-    auto SparseVecStorage<T>::end() const -> const_iterator {
-        return cend();
-    }
-
-    template<typename T>
-    auto SparseVecStorage<T>::with_id() -> WithIdView<iterator, const_iterator> {
-        return { begin(), end() };
-    }
-
-    template<typename T>
-    auto SparseVecStorage<T>::with_id() const -> WithIdView<const_iterator, const_iterator> {
-        return { begin(), end() };
+    template<typename T, typename Fn>
+    void foreach_with_id(SparseVecStorage<T> &storage, Fn &&f) {
+        std::size_t size = storage.dense.size();
+        for (std::size_t i = 0; i < size; ++i)
+            f(storage.dense_ids[i], storage.dense[i]);
     }
 }

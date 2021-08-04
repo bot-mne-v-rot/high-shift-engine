@@ -392,6 +392,9 @@ namespace ecs {
     ecs_define_id_set_iterator(EmptyIdSet);
 
     static_assert(IdSetLike<EmptyIdSet>);
+
+    template<IdSetLike Set, typename Fn>
+    void foreach(const Set &set, Fn &&f);
 }
 
 namespace std {

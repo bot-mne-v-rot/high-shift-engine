@@ -20,17 +20,7 @@ namespace ecs {
     template<typename T>
     class SparseVecStorage {
     public:
-        using value_type = T;
-        using reference = T &;
-        using const_reference = const T &;
-        using difference_type = std::ptrdiff_t;
-        using size_type = std::size_t;
-
-        template<typename Ref, typename Ptr>
-        class iterator_template;
-
-        using iterator = iterator_template<reference, T *>;
-        using const_iterator = iterator_template<const_reference, const T *>;
+        using Component = T;
 
         SparseVecStorage() = default;
         // Preallocates memory for dense of `n` components and sparse of `ids`
@@ -59,16 +49,6 @@ namespace ecs {
 
         void swap(SparseVecStorage<T> &other) noexcept;
 
-        iterator begin();
-        iterator end();
-        const_iterator begin() const;
-        const_iterator end() const;
-        const_iterator cbegin() const;
-        const_iterator cend() const;
-
-        WithIdView<iterator, const_iterator> with_id();
-        WithIdView<const_iterator, const_iterator> with_id() const;
-
         const IdSet &present() const;
 
     private:
@@ -82,42 +62,17 @@ namespace ecs {
         DenseIds dense_ids;
 
     public:
-        template<typename Ref, typename Ptr>
-        class iterator_template {
-            using DenseIter = typename Dense::iterator;
-            using DenseIdsIter = typename DenseIds::iterator;
-        public:
-            using reference = Ref;
-            using pointer = Ptr;
-            using value_type = T;
-            using difference_type = std::ptrdiff_t;
-            using iterator_category = std::forward_iterator_tag;
+        template<typename U, typename Fn>
+        friend void foreach(const SparseVecStorage<U> &storage, Fn &&f);
 
-            iterator_template() = default;
-            iterator_template(const iterator_template &) = default;
-            iterator_template &operator=(const iterator_template &) = default;
+        template<typename U, typename Fn>
+        friend void foreach(SparseVecStorage<U> &storage, Fn &&f);
 
-            reference operator*() const;
-            pointer operator->() const;
+        template<typename U, typename Fn>
+        friend void foreach_with_id(const SparseVecStorage<U> &storage, Fn &&f);
 
-            iterator_template &operator++();
-            iterator_template operator++(int);
-
-            bool operator==(const iterator_template &other) const = default;
-            bool operator!=(const iterator_template &other) const = default;
-
-            ecs::Id id() const;
-
-        private:
-            DenseIter dense_it;
-            DenseIdsIter dense_ids_it;
-
-            friend SparseVecStorage;
-
-            iterator_template(DenseIter dense_it, DenseIdsIter dense_ids_it)
-                    : dense_it(std::move(dense_it)),
-                      dense_ids_it(std::move(dense_ids_it)) {}
-        };
+        template<typename U, typename Fn>
+        friend void foreach_with_id(SparseVecStorage<U> &storage, Fn &&f);
     };
 }
 

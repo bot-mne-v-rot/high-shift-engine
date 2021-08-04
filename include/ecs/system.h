@@ -46,6 +46,30 @@ namespace ecs {
         &S::update; // has update method
         requires detail::all_params_are_lvalue_refs_to_resources_v<decltype(&S::update)>;
     };
+
+    /**
+     * Optionally System can provide setup method that
+     * accepts reference to World.
+     *
+     * It would be called by Dispatcher during setup routine
+     * and before automatic resources' creation.
+     */
+    template<class S>
+    concept SystemHasSetup = requires(S sys, World &world) {
+        sys.setup(world);
+    };
+
+    /**
+     * Optionally System can provide teardown method that
+     * accepts reference to World.
+     *
+     * It would be called by Dispatcher during teardown routine
+     * and before System's destructor.
+     */
+    template<class S>
+    concept SystemHasTeardown = requires(S sys, World &world) {
+        sys.teardown(world);
+    };
 }
 
 #endif //HIGH_SHIFT_SYSTEM_H

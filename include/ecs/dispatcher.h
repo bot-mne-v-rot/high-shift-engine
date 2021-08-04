@@ -4,6 +4,7 @@
 #include "ecs/system.h"
 #include "ecs/entities.h"
 #include "ecs/utils.h"
+#include "ecs/game_loop_control.h"
 
 #include <tuple>
 
@@ -40,13 +41,16 @@ namespace ecs {
         Dispatcher() : Dispatcher(World()) {}
 
         /**
-         * Creates all the resources used by the systems.
+         * Calls all the setup methods for systems that provide id.
+         * Automatically creates all the resources used by the systems.
          */
         explicit Dispatcher(World world_) : world(std::move(world_)) {
             world.emplace<Entities>(&world);
-            detail::tuple_for_each(systems,[this] < System
-            S > (S & system)
-            {
+            world.emplace<GameLoopControl>();
+
+            detail::tuple_for_each(systems, [this]<System S>(S &system) {
+                if constexpr(SystemHasSetup<S>)
+                    system.setup(world);
                 detail::setup_resources(world, &S::update);
             });
         }
@@ -56,11 +60,15 @@ namespace ecs {
          * when update method of each system is called.
          */
         void update() {
-            detail::tuple_for_each(systems,[this] < System
-            S > (S & system)
-            {
+            detail::tuple_for_each(systems, [this]<System S>(S &system) {
                 detail::update_with_resources(world, system, &S::update);
             });
+        }
+
+        void run() {
+            auto &game_loop_control = world.get<GameLoopControl>();
+            while (!game_loop_control.stopped())
+                update();
         }
 
         World &get_world() {
@@ -69,6 +77,16 @@ namespace ecs {
 
         const World &get_world() const {
             return world;
+        }
+
+        /**
+         * Calls all the teardown methods for systems that provide id.
+         */
+        ~Dispatcher() {
+            detail::tuple_for_each(systems, [this]<System S>(S &system) {
+                if constexpr(SystemHasTeardown<S>)
+                    system.teardown(world);
+            });
         }
 
     private:

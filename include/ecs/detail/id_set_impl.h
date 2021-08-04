@@ -62,6 +62,43 @@ namespace ecs {
 
     inline IdSet::IdSet() = default;
 
+    inline IdSet::IdSet(const IdSet &other) {
+        *this = other;
+    }
+
+    inline IdSet &IdSet::operator=(const IdSet &other) {
+        if (this == &other)
+            return *this;
+
+        reserve(other.capacity());
+        level3 = other.level3;
+        for (std::size_t lvl = 0; lvl + 1 < levels_num; ++lvl)
+            if (other.levels[lvl])
+                memcpy(levels[lvl], other.levels[lvl], lvl_cp[lvl] * sizeof(uint64_t));
+        sz = other.sz;
+
+        return *this;
+    }
+
+    inline IdSet::IdSet(IdSet &&other) {
+        swap(other);
+    }
+
+    inline IdSet &IdSet::operator=(IdSet &&other) {
+        swap(other);
+        return *this;
+    }
+
+    inline void IdSet::swap(IdSet &other) {
+        std::swap(level3, other.level3);
+        for (std::size_t i = 0; i + 1 < levels_num; ++i) {
+            std::swap(levels[i], other.levels[i]);
+            std::swap(lvl_cp[i], other.lvl_cp[i]);
+        }
+        std::swap(cp, other.cp);
+        std::swap(sz, other.sz);
+    }
+
     inline void IdSet::insert(Id id) {
         reserve(id + 1);
         if (!contains(id))
@@ -74,12 +111,10 @@ namespace ecs {
         }
     }
 
-    inline void IdSet::erase(Id id) {
-        if (cp <= id)
-            return;
-
-        if (contains(id))
-            --sz;
+    inline bool IdSet::erase(Id id) {
+        if (!contains(id))
+            return false;
+        --sz;
 
         uint32_t pos = id & lower_bits;
         id >>= shift;
@@ -92,6 +127,7 @@ namespace ecs {
             id >>= shift;
             detail::place_bit(levels[i][id], pos, bit);
         }
+        return true;
     }
 
     inline IdSet::iterator IdSet::erase(const_iterator it) {
@@ -489,5 +525,51 @@ namespace ecs {
     template<IdSetLike S>
     bool IdSetIterator<S>::operator!=(const IdSetIterator <S> &other) const {
         return set != other.set || pos != other.pos;
+    }
+
+    template<IdSetLike Set, typename Fn>
+    void foreach(const Set &set, Fn &&f) {
+        std::size_t lvl3_cp = set.level_capacity(3);
+        std::size_t lvl2_cp = set.level_capacity(2);
+        std::size_t lvl1_cp = set.level_capacity(1);
+        std::size_t lvl0_cp = set.level_capacity(0);
+
+        if (!lvl3_cp)
+            return;
+
+        uint64_t lvl3_data = set.level_data(3, 0);
+        while (lvl3_data) {
+            std::size_t lvl2 = __builtin_ctzll(lvl3_data); // get right-most bit
+            if (lvl2 >= lvl2_cp)
+                return;
+
+            uint64_t lvl2_data = set.level_data(2, lvl2);
+            while (lvl2_data) {
+                std::size_t lvl1 = (lvl2 << IdSet::shift) |
+                                   __builtin_ctzll(lvl2_data); // get right-most bit
+                if (lvl1 >= lvl1_cp)
+                    return;
+
+                uint64_t lvl1_data = set.level_data(1, lvl1);
+                while (lvl1_data) {
+                    std::size_t lvl0 = (lvl1 << IdSet::shift) |
+                                       __builtin_ctzll(lvl1_data); // get right-most bit
+                    if (lvl0 >= lvl0_cp)
+                        return;
+
+                    uint64_t lvl0_data = set.level_data(0, lvl0);
+
+                    while (lvl0_data) {
+                        uint64_t pos = (lvl0 << IdSet::shift) |
+                                       __builtin_ctzll(lvl0_data); // get right-most bit
+                        f(pos);
+                        lvl0_data &= (lvl0_data - 1); // clear right-most bit
+                    }
+                    lvl1_data &= (lvl1_data - 1); // clear right-most bit
+                }
+                lvl2_data &= (lvl2_data - 1); // clear right-most bit
+            }
+            lvl3_data &= (lvl3_data - 1); // clear right-most bit
+        }
     }
 }

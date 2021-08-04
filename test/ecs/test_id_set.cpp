@@ -217,4 +217,73 @@ TEST_SUITE("ecs/storages/IdSet") {
             CHECK(i == ids_n);
         }
     }
+
+    TEST_CASE("copy/move") {
+        ecs::IdSet set;
+        constexpr ecs::Id ids[] = {10, 11, 12, 500, 1000, 1020, 5000, 100000, 100001, 1000000, 10000000};
+        constexpr ecs::Id o_ids[] = {200, 300, 400};
+        constexpr std::size_t ids_n = sizeof(ids) / sizeof(ecs::Id);
+
+        for (ecs::Id id : ids)
+            set.insert(id);
+
+        SUBCASE("copy constructor") {
+            ecs::IdSet other(set);
+
+            std::size_t i = 0;
+            for (ecs::Id id : other)
+                CHECK(ids[i++] == id);
+            CHECK(i == ids_n);
+
+            CHECK(set.capacity() == other.capacity());
+            CHECK(set.size() == other.size());
+        }
+
+        SUBCASE("move constructor") {
+            ecs::IdSet other(std::move(set));
+
+            std::size_t i = 0;
+            for (ecs::Id id : other)
+                CHECK(ids[i++] == id);
+            CHECK(i == ids_n);
+        }
+
+        SUBCASE("assignment") {
+            ecs::IdSet other;
+            for (ecs::Id id : o_ids)
+                other.insert(id);
+
+            SUBCASE("copy") {
+                other = set;
+                CHECK(set.capacity() == other.capacity());
+                CHECK(set.size() == other.size());
+            }
+
+            SUBCASE("move") {
+                other = std::move(set);
+            }
+
+            std::size_t i = 0;
+            for (ecs::Id id : other)
+                CHECK(ids[i++] == id);
+            CHECK(i == ids_n);
+        }
+    }
+
+    TEST_CASE("foreach") {
+        ecs::IdSet set;
+        constexpr ecs::Id ids[] = {10, 11, 12, 500, 1000, 1020, 5000, 100000, 100001, 1000000, 10000000};
+        constexpr std::size_t ids_n = sizeof(ids) / sizeof(ecs::Id);
+
+        for (ecs::Id id : ids)
+            set.insert(id);
+
+        SUBCASE("go through") {
+            std::size_t i = 0;
+            ecs::foreach(set, [&i, &ids](auto id) {
+                CHECK(ids[i++] == id);
+            });
+            CHECK(i == ids_n);
+        }
+    }
 }

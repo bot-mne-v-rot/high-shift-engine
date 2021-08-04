@@ -3,9 +3,12 @@
 
 #include <bitset>
 #include <array>
+#include <vector>
 #include <cassert>
 #include <memory>
 #include <concepts>
+
+#include "ecs/storage.h"
 
 namespace ecs {
     namespace detail {
@@ -24,7 +27,6 @@ namespace ecs {
     template<typename R>
     concept Resource = requires {
         requires std::same_as<R, std::remove_cvref_t<R>>;
-        requires std::is_default_constructible_v<R>;
     };
 
     /**
@@ -42,16 +44,19 @@ namespace ecs {
         World &operator=(World &&) = default;
 
         /**
-         * Stores Resource by ptr to it.
+         * Stores Resource by res to it.
          * If you insert the same resource twice, it is overwritten.
          * @tparam R Resource type to store.
-         * @param ptr std::unique_ptr represents transferring of the ownership.
+         * @param res std::unique_ptr represents transferring of the ownership.
          */
         template<Resource R>
-        void insert(std::unique_ptr<R> ptr) {
+        void insert(std::unique_ptr<R> res) {
             static auto id = detail::get_resource_id<R>();
             presence.set(id);
-            resources[id] = std::move(ptr);
+
+            if constexpr(MutStorage<R>)
+                _storages.emplace_back(*res, id);
+            resources[id] = std::move(res);
         }
 
         /**
@@ -63,7 +68,11 @@ namespace ecs {
         void emplace(Args &&...args) {
             static auto id = detail::get_resource_id<R>();
             presence.set(id);
-            resources[id] = std::make_unique<R>(std::forward<Args>(args)...);
+
+            auto res = std::make_unique<R>(std::forward<Args>(args)...);
+            if constexpr(MutStorage<R>)
+                _storages.emplace_back(*res, id);
+            resources[id] = std::move(res);
         }
 
         /**
@@ -78,6 +87,11 @@ namespace ecs {
 
             presence.reset(id);
             resources[id] = std::shared_ptr<R>();
+
+            if constexpr(MutStorage<R>)
+                _storages.erase(std::find_if(_storages.begin(), _storages.end(), [](auto &storage) {
+                    return storage.resource_id() == id;
+                }));
         }
 
         /**
@@ -114,6 +128,12 @@ namespace ecs {
             return presence[id];
         }
 
+        using StorageInterfaces = std::vector<MutStorageInterface>;
+
+        const StorageInterfaces &storages() const {
+            return _storages;
+        }
+
     private:
         static constexpr std::size_t max_resources = 1024;
         using ResourcesPresence = std::bitset<max_resources>;
@@ -121,6 +141,7 @@ namespace ecs {
 
         ResourcesPresence presence;
         ResourcesArray resources;
+        StorageInterfaces _storages;
     };
 }
 

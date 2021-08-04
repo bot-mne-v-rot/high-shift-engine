@@ -22,27 +22,23 @@ namespace ecs {
             return deref_to_ptr_storages_tuple_impl(tuple, id, std::make_index_sequence<sizeof...(Args)>());
         }
 
-        template<typename ...Storages>
-        requires(Storage <std::remove_const_t<Storages>> &&...)
-        inline auto JoinRange<Storages...>::begin() const -> iterator {
+        template<typename JoinIt, typename ...KeepAlive>
+        inline auto JoinView<JoinIt, KeepAlive...>::begin() const -> iterator {
             return b;
         }
 
-        template<typename ...Storages>
-        requires(Storage <std::remove_const_t<Storages>> &&...)
-        inline auto JoinRange<Storages...>::end() const -> iterator {
+        template<typename JoinIt, typename ...KeepAlive>
+        inline auto JoinView<JoinIt, KeepAlive...>::end() const -> iterator {
             return e;
         }
 
-        template<typename ...Storages>
-        requires(Storage <std::remove_const_t<Storages>> &&...)
-        inline auto JoinRange<Storages...>::cbegin() const -> iterator {
+        template<typename JoinIt, typename ...KeepAlive>
+        inline auto JoinView<JoinIt, KeepAlive...>::cbegin() const -> iterator {
             return b;
         }
 
-        template<typename ...Storages>
-        requires(Storage <std::remove_const_t<Storages>> &&...)
-        inline auto JoinRange<Storages...>::cend() const -> iterator {
+        template<typename JoinIt, typename ...KeepAlive>
+        inline auto JoinView<JoinIt, KeepAlive...>::cend() const -> iterator {
             return e;
         }
 
@@ -69,22 +65,55 @@ namespace ecs {
 
         template<typename ...Storages>
         requires(Storage <std::remove_const_t<Storages>> &&...)
-        inline auto JoinIterator<Storages...>::operator->() const -> pointer {
-            return deref_to_ptr_storages_tuple(storages, *mask_iterator);
+        inline ecs::Id JoinIterator<Storages...>::id() const {
+            return *mask_iterator;
+        }
+
+        template<typename ...Storages>
+        requires(Storage <std::remove_const_t<Storages>> &&...)
+        inline auto JoinWithIdIterator<Storages...>::operator++() -> JoinWithIdIterator & {
+            ++iter;
+            return *this;
+        }
+
+        template<typename ...Storages>
+        requires(Storage <std::remove_const_t<Storages>> &&...)
+        inline auto JoinWithIdIterator<Storages...>::operator++(int) -> JoinWithIdIterator {
+            auto copy = *this;
+            ++(*this);
+            return copy;
+        }
+
+        template<typename ...Storages>
+        requires(Storage <std::remove_const_t<Storages>> &&...)
+        inline auto JoinWithIdIterator<Storages...>::operator*() const -> reference {
+            return std::tuple_cat(std::make_tuple<Id>(id()), *iter);
+        }
+
+        template<typename ...Storages>
+        requires(Storage <std::remove_const_t<Storages>> &&...)
+        inline ecs::Id JoinWithIdIterator<Storages...>::id() const {
+            return iter.id();
         }
     }
 
     template<typename ...Storages>
-    requires(Storage <std::remove_const_t<Storages>> &&...)
-    inline detail::JoinRange<Storages...> join(Storages &...storages) {
+    inline JoinView<Storages...> join(Storages &...storages) {
         auto joined_mask = std::make_unique<detail::JoinedMask<Storages...>>((storages.present() & ...));
         auto beg = detail::JoinIterator<Storages...>(&storages..., joined_mask->begin());
         auto end = detail::JoinIterator<Storages...>(&storages..., joined_mask->end());
-        return detail::JoinRange<Storages...>(
-                beg,
-                end,
-                std::move(joined_mask)
-        );
+        return {beg, end, std::move(joined_mask)};
+    }
+
+    template<typename ...Storages>
+    requires(Storage <std::remove_const_t<Storages>> &&...)
+    inline JoinWithIdView<Storages...> join_with_id(Storages &...storages) {
+        auto joined_mask = std::make_unique<detail::JoinedMask<Storages...>>((storages.present() & ...));
+        auto beg = detail::JoinWithIdIterator(
+                detail::JoinIterator<Storages...>(&storages..., joined_mask->begin()));
+        auto end = detail::JoinWithIdIterator(
+                detail::JoinIterator<Storages...>(&storages..., joined_mask->end()));
+        return {beg, end, std::move(joined_mask)};
     }
 
 }

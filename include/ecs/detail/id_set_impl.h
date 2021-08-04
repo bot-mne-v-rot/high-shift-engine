@@ -529,47 +529,43 @@ namespace ecs {
 
     template<IdSetLike Set, typename Fn>
     void foreach(const Set &set, Fn &&f) {
-        std::size_t lvl3_cp = set.level_capacity(3);
-        std::size_t lvl2_cp = set.level_capacity(2);
-        std::size_t lvl1_cp = set.level_capacity(1);
-        std::size_t lvl0_cp = set.level_capacity(0);
+        uint64_t levels_cp[IdSet::levels_num];
+        uint64_t levels_data[IdSet::levels_num];
 
-        if (!lvl3_cp)
-            return;
+        levels_data[IdSet::levels_num - 1] = set.level_data(IdSet::levels_num - 1, 0);
+        for (std::size_t i = 0; i < IdSet::levels_num; ++i)
+            levels_cp[i] = set.level_capacity(i);
 
-        uint64_t lvl3_data = set.level_data(3, 0);
-        while (lvl3_data) {
-            std::size_t lvl2 = __builtin_ctzll(lvl3_data); // get right-most bit
-            if (lvl2 >= lvl2_cp)
-                return;
+        Id pos = 0;
+        std::size_t lvl = IdSet::levels_num - 1;
 
-            uint64_t lvl2_data = set.level_data(2, lvl2);
-            while (lvl2_data) {
-                std::size_t lvl1 = (lvl2 << IdSet::shift) |
-                                   __builtin_ctzll(lvl2_data); // get right-most bit
-                if (lvl1 >= lvl1_cp)
+        while (true) {
+            if (!levels_data[lvl]) {
+                if (lvl == IdSet::levels_num - 1)
                     return;
+                pos >>= IdSet::shift; // move pos back
+                ++lvl; // go up
+            } else if (lvl) {
+                uint64_t trailing = __builtin_ctzll(levels_data[lvl]);
+                levels_data[lvl] &= (levels_data[lvl] - 1); // erase rightmost bit
 
-                uint64_t lvl1_data = set.level_data(1, lvl1);
-                while (lvl1_data) {
-                    std::size_t lvl0 = (lvl1 << IdSet::shift) |
-                                       __builtin_ctzll(lvl1_data); // get right-most bit
-                    if (lvl0 >= lvl0_cp)
-                        return;
+                pos <<= IdSet::shift;
+                pos |= trailing;
 
-                    uint64_t lvl0_data = set.level_data(0, lvl0);
+                --lvl; // go down
+                if (pos >= levels_cp[lvl])
+                    return;
+                levels_data[lvl] = set.level_data(lvl, pos);
+            } else {
+                do {
+                    uint64_t trailing = __builtin_ctzll(levels_data[0]);
+                    levels_data[0] &= (levels_data[0] - 1); // erase rightmost bit
 
-                    while (lvl0_data) {
-                        uint64_t pos = (lvl0 << IdSet::shift) |
-                                       __builtin_ctzll(lvl0_data); // get right-most bit
-                        f(pos);
-                        lvl0_data &= (lvl0_data - 1); // clear right-most bit
-                    }
-                    lvl1_data &= (lvl1_data - 1); // clear right-most bit
-                }
-                lvl2_data &= (lvl2_data - 1); // clear right-most bit
+                    f((pos << IdSet::shift) | trailing); // callback
+                } while (levels_data[0]);
+                pos >>= IdSet::shift; // move pos back
+                ++lvl; // can unconditionally go up because there is always at least two levels
             }
-            lvl3_data &= (lvl3_data - 1); // clear right-most bit
         }
     }
 }

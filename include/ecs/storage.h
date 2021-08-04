@@ -58,17 +58,15 @@ namespace ecs {
      * so they are commented till better time.
      */
     template<class S>
-    concept Storage = requires(S a, const S b, Id id,
-            detail::ConstForEachLambda<S> const_foreach_lambda,
-            detail::ConstForEachLambdaWithId<S> const_foreach_lambda_with_id) {
+    concept Storage = requires(S a, const S b, Id id) {
         typename S::Component;
         //            requires std::regular<S>;
         //            requires std::swappable<S>;
         //            requires std::destructible<typename S::Component>;
         { a.size() } -> std::same_as<std::size_t>;
         { a.empty() } -> std::same_as<bool>;
-        { foreach(b, const_foreach_lambda) } -> std::same_as<void>;
-        { foreach_with_id(b, const_foreach_lambda_with_id) } -> std::same_as<void>;
+        { foreach(b, std::declval<detail::ConstForEachLambda<S>>()) } -> std::same_as<void>;
+        { foreach_with_id(b, std::declval<detail::ConstForEachLambdaWithId<S>>()) } -> std::same_as<void>;
         { a[id] } -> std::same_as<typename S::Component &>;
         { b[id] } -> std::same_as<const typename S::Component &>;
         { b.contains(id) } -> std::same_as<bool>;

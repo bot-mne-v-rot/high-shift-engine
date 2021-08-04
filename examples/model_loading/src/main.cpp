@@ -1,6 +1,5 @@
 #include "ecs/ecs.h"
 #include "render/render_system.h"
-#include "render/model_loader.h"
 
 int main() {
     ecs::Dispatcher<render::RenderSystem> dispatcher;

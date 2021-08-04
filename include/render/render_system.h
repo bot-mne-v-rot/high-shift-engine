@@ -3,8 +3,6 @@
 
 #include "ecs/ecs.h"
 
-#include <memory>
-
 namespace render {
     class RenderSystem {
     public:

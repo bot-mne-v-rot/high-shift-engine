@@ -81,8 +81,7 @@ TEST_SUITE("ecs/join") {
 
         SUBCASE("foreach") {
             SUBCASE("without id") {
-                ecs::joined_foreach<const SomeComponent::Storage,
-                        OtherComponent::Storage>(a, b, [&](auto &some, auto &other) {
+                ecs::joined_foreach(a, b, [&](auto &some, auto &other) {
                     CHECK(some.i == ids_c[i]);
                     CHECK(other.i == ids_c[i]);
                     ++i;

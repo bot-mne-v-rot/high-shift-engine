@@ -41,12 +41,13 @@ public:
 
     ~HandleManager();
 
+    template<typename U, typename Fn>
+    friend void foreach(const HandleManager<U> &manager, Fn &&f);
+
 private:
     struct Entry {
-        union {
-            T *data;
-            uint32_t next;
-        };
+        T *data;
+        uint32_t next;
         uint32_t version;
     };
 
@@ -54,6 +55,7 @@ private:
     std::size_t cp = 0;
     Entry *entries = nullptr;
     uint32_t free_list = NO_ENTRY;
+    uint32_t used_list = NO_ENTRY;
     static const uint32_t NO_ENTRY = UINT32_MAX;
 };
 
@@ -75,6 +77,7 @@ auto HandleManager<T>::operator=(const HandleManager &other) -> HandleManager & 
     sz = other.sz;
     cp = other.cp;
     free_list = other.free_list;
+    used_list = other.used_list;
 
     operator delete(entries);
     entries = (Entry *) operator new(cp * sizeof(Entry));
@@ -100,6 +103,7 @@ void HandleManager<T>::swap(HandleManager &other) {
     std::swap(cp, other.cp);
     std::swap(entries, other.entries);
     std::swap(free_list, other.free_list);
+    std::swap(used_list, other.used_list);
 }
 
 template<typename T>
@@ -107,12 +111,13 @@ void HandleManager<T>::reserve(std::size_t new_capacity) {
     if (new_capacity <= cp || new_capacity == 0)
         return;
 
-    std::size_t new_cp = 0;
+    std::size_t new_cp = 1;
     while (new_cp < new_capacity)
         new_cp *= 2;
 
     Entry *new_entries = (Entry *) operator new(sizeof(Entry) * new_cp);
-    memcpy(new_entries, entries, cp * sizeof(Entry));
+    if (entries)
+        memcpy(new_entries, entries, cp * sizeof(Entry));
     for (std::size_t i = cp; i < new_cp; ++i) {
         new_entries[i].next = free_list;
         new_entries[i].version = 0;
@@ -136,8 +141,12 @@ Handle<T> HandleManager<T>::insert(T *data) {
 
     uint32_t free_idx = free_list;
     Entry &entry = entries[free_idx];
+
     free_list = entry.next;
     entry.data = data;
+
+    entry.next = used_list;
+    used_list = free_idx;
 
     Handle<T> handle;
     handle.index = free_idx;
@@ -158,6 +167,8 @@ bool HandleManager<T>::erase(Handle<T> handle) {
         return false;
 
     ++entry.version;
+
+    used_list = entry.next;
     entry.next = free_list;
     free_list = handle.index;
 
@@ -200,6 +211,16 @@ std::size_t HandleManager<T>::size() const {
 template<typename T>
 std::size_t HandleManager<T>::capacity() const {
     return cp;
+}
+
+template<typename T, typename Fn>
+void foreach(const HandleManager<T> &manager, Fn &&f) {
+    uint32_t cur = manager.used_list;
+    while (cur != HandleManager<T>::NO_ENTRY) {
+        auto &entry = manager.entries[cur];
+        f(entry.data);
+        cur = entry.next;
+    }
 }
 
 #endif //HIGH_SHIFT_HANDLE_MANAGER_H

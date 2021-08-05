@@ -53,21 +53,25 @@ namespace render {
         glEnable(GL_DEPTH_TEST);
     }
 
-    static void render_mesh(const Mesh &mesh, const ShaderProgram &shader) {
+    static void render_mesh(const Mesh &mesh,
+                            const TextureLoader &texture_loader,
+                            const ShaderProgram &shader) {
         unsigned int diffuseNr = 0;
         unsigned int specularNr = 0;
         for (unsigned int i = 0; i < mesh.textures.size(); i++) {
             glActiveTexture(GL_TEXTURE0 + i); // activate proper texture unit before binding
+            Texture2d *tex = texture_loader.get_texture(mesh.textures[i]);
+
             // retrieve texture number (the N in diffuse_textureN)
             std::string number;
-            std::string name = mesh.textures[i].type;
+            std::string name = tex->type;
             if (name == "texture_diffuse")
                 number = std::to_string(diffuseNr++);
             else if (name == "texture_specular")
                 number = std::to_string(specularNr++);
 
             shader.set_int((name + number).c_str(), i);
-            glBindTexture(GL_TEXTURE_2D, mesh.textures[i].id);
+            glBindTexture(GL_TEXTURE_2D, tex->id);
         }
         glActiveTexture(GL_TEXTURE0);
 
@@ -90,6 +94,7 @@ namespace render {
         }
 
         void update(ecs::GameLoopControl &game_loop,
+                    const TextureLoader &texture_loader,
                     const MeshRenderer::Storage &renderers,
                     const Transform::Storage &transforms,
                     const Camera::Storage &cameras) {
@@ -117,7 +122,7 @@ namespace render {
                     glm::mat4 mapping = projection * view * model;
                     renderer.shader_program->use();
                     renderer.shader_program->set_mat4("mapping", glm::value_ptr(mapping));
-                    render_mesh(*renderer.mesh, *renderer.shader_program);
+                    render_mesh(*renderer.mesh, texture_loader, *renderer.shader_program);
                 });
             });
 
@@ -146,10 +151,11 @@ namespace render {
     }
 
     void RenderSystem::update(ecs::GameLoopControl &game_loop_control,
+                              const TextureLoader &texture_loader,
                               const MeshRenderer::Storage &renderers,
                               const Transform::Storage &transforms,
                               const Camera::Storage &cameras) {
-        impl->update(game_loop_control, renderers, transforms, cameras);
+        impl->update(game_loop_control, texture_loader, renderers, transforms, cameras);
     }
 
     void RenderSystem::teardown(ecs::World &world) {

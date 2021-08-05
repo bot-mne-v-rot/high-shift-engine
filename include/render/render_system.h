@@ -7,6 +7,7 @@
 #include "ecs/ecs.h"
 #include "render/model_loader.h"
 #include "render/shader.h"
+#include "render/texture_loader.h"
 
 namespace render {
     struct Transform {
@@ -39,6 +40,7 @@ namespace render {
 
         void setup(ecs::World &world);
         void update(ecs::GameLoopControl &game_loop,
+                    const TextureLoader &texture_loader,
                     const MeshRenderer::Storage &renderers,
                     const Transform::Storage &transforms,
                     const Camera::Storage &cameras);

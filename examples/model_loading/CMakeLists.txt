@@ -11,7 +11,7 @@ file(GLOB_RECURSE SOURCES
         "${PROJECT_SOURCE_DIR}/src/*.h"
         "${PROJECT_SOURCE_DIR}/src/*.cpp")
 include_directories(include)
-add_executable(${PROJECT_NAME} src/main.cpp ${SOURCES} ${ENGINE_SOURCES} include/texture.h src/texture.cpp)
+add_executable(${PROJECT_NAME} src/main.cpp ${SOURCES} ${ENGINE_SOURCES})
 
 # GLFW
 set(GLFW_DIR "${UNIVERSAL_LIB_DIR}/glfw")

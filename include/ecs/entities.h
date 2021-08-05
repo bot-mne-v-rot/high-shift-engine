@@ -83,7 +83,8 @@ namespace ecs {
         template<typename Cmp>
         requires Component<std::remove_cvref_t<Cmp>>
         void create_component(Id id, Cmp &&cmp) {
-            world->get<typename std::remove_cvref_t<Cmp>::Storage>()
+            using CmpStorage = typename std::remove_cvref_t<Cmp>::Storage;
+            world->get<CmpStorage>()
                     .insert(id, std::forward<Cmp>(cmp));
         }
     };

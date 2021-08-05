@@ -80,14 +80,12 @@ namespace ecs {
     template<class S>
     concept MutStorage = requires(S a, Id id,
                                   const typename S::Component &c_lval_ref,
-                                  typename S::Component &&rval_ref,
-                                  detail::ForEachLambda<S> foreach_lambda,
-                                  detail::ForEachLambdaWithId<S> foreach_lambda_with_id) {
+                                  typename S::Component &&rval_ref) {
         { a.insert(id, c_lval_ref) } -> std::same_as<void>;
         { a.insert(id, rval_ref) } -> std::same_as<void>;
         { a.erase(id) } -> std::same_as<void>;
-        { foreach(a, foreach_lambda) } -> std::same_as<void>;
-        { foreach_with_id(a, foreach_lambda_with_id) } -> std::same_as<void>;
+        { foreach(a, std::declval<detail::ForEachLambda<S>>()) } -> std::same_as<void>;
+        { foreach_with_id(a, std::declval<detail::ForEachLambdaWithId<S>>()) } -> std::same_as<void>;
     } && Storage<S>;
 
     /**

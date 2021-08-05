@@ -18,6 +18,11 @@ namespace render {
         TextureLoader();
         ~TextureLoader();
 
+        TextureLoader(const TextureLoader &) = delete;
+        TextureLoader &operator=(const TextureLoader &) = delete;
+        TextureLoader(TextureLoader &&) = default;
+        TextureLoader &operator=(TextureLoader &&) = default;
+
         tl::expected<Handle<Texture2d>, std::string> load_from_file(std::filesystem::path path);
         Texture2d *get_texture(Handle<Texture2d> handle) const;
         bool unload_texture(Handle<Texture2d> handle);

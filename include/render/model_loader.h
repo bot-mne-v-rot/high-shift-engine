@@ -15,23 +15,33 @@ namespace render {
         glm::vec2 tex_coords;
     };
 
-    struct Texture {
-        unsigned int id;
-        std::string type;
-    };
-
     struct Mesh {
         std::vector<Vertex> vertices;
         std::vector<unsigned int> indices;
-        std::vector<Texture> textures;
+        std::vector<Handle<Texture2d>> textures;
 
         unsigned int VAO, VBO, EBO;
     };
 
     class ModelLoader {
     public:
-        void setup_mesh(Mesh *mesh);
-        void load_model(const char* path);
+        ModelLoader();
+
+        ModelLoader(const ModelLoader &) = delete;
+        ModelLoader &operator=(const ModelLoader &) = delete;
+        ModelLoader(ModelLoader &&) = default;
+        ModelLoader &operator=(ModelLoader &&) = default;
+
+        tl::expected<Handle<Model>, std::string> load_model(const std::filesystem::path &path);
+        Model *get_model(Handle<Model> handle);
+        bool unload_model(Handle<Model> handle); // true if handle was valid
+
+        ~ModelLoader();
+
+    private:
+        class Impl;
+
+        Impl *impl = nullptr;
     };
 }
 

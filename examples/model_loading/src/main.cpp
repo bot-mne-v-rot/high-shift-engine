@@ -4,6 +4,7 @@
 #include "glm/vec3.hpp"
 #include "texture.h"
 #include "iostream"
+#include "common/handle_manager.h"
 
 std::vector<float> raw_vert = {
         -0.5f, -0.5f, -0.5f, 0.0f, 0.0f,
@@ -102,6 +103,7 @@ tl::expected<render::ShaderProgram, std::string> setup_shaders() {
 
 int main() {
     ecs::Dispatcher<render::RenderSystem> dispatcher;
+    HandleManager<render::Mesh> mesh_handler;
     auto &entities = dispatcher.get_world().get<ecs::Entities>();
     auto tr = render::Transform({glm::vec3(0.0f, 0.0f, -3.0f),
                                  glm::quat(glm::vec3(0.f, 0.f, 0.f))});
@@ -109,11 +111,13 @@ int main() {
     entities.create(tr, cam);
 
 
-    Texture2d container;
-    container.load_texture("assets/container.jpg", GL_RGB);
+    auto &texture_loader = dispatcher.get_world().get<render::TextureLoader>();
+    auto container = texture_loader.load_from_file("assets/container.jpg").value();
+    texture_loader.get_texture(container)->type = "texture_diffuse";
 
-    Texture2d awesomeface;
-    awesomeface.load_texture("assets/awesomeface.png", GL_RGBA);
+
+    /*Texture2d awesomeface;
+    awesomeface.load_texture("assets/awesomeface.png", GL_RGBA);*/
 
 
 
@@ -128,11 +132,10 @@ int main() {
     render::Mesh cube_mesh{
             vertices,
             indices,
-            {render::Texture{container.id, "texture_diffuse"}, render::Texture{awesomeface.id, "texture_diffuse"}}
+            {container}
     };
 
-    render::ModelLoader loader;
-    loader.setup_mesh(&cube_mesh);
+    setup_mesh(&cube_mesh);
 
     auto result = setup_shaders();
     if (!result) {

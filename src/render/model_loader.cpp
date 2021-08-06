@@ -157,7 +157,6 @@ namespace render {
                 textures.push_back(
                         texture_loader.load_from_file(directory / str.C_Str(), type_name).value()
                 );
-                std::cout << "process_texture " << i << " / " << mat->GetTextureCount(type) << std::endl;
             }
         }
 

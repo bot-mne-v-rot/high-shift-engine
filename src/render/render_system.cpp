@@ -132,7 +132,7 @@ namespace render {
                 view *= glm::toMat4(cam_transform.rotation);
 
                 ecs::joined_foreach(transforms, renderers, [&](const Transform &ent_transform,
-                                                              const MeshRenderer &renderer) {
+                                                               const MeshRenderer &renderer) {
                     glm::mat4 local_to_world = glm::mat4(1.0f);
                     local_to_world = glm::translate(local_to_world, ent_transform.position);
                     local_to_world = local_to_world * glm::toMat4(ent_transform.rotation);
@@ -140,10 +140,11 @@ namespace render {
                     glm::mat4 mapping = projection * view * local_to_world;
                     renderer.shader_program->use();
                     renderer.shader_program->set_mat4("mapping", glm::value_ptr(mapping));
-                    Model* model = model_loader.get_model(renderer.model_handle);
-                    for (auto& mesh : model->meshes) {
-                        render_mesh(mesh, texture_loader, *renderer.shader_program);
-                    }
+
+                    Model *model = model_loader.get_model(renderer.model_handle);
+                    if (model)
+                        for (auto &mesh : model->meshes)
+                            render_mesh(mesh, texture_loader, *renderer.shader_program);
                 });
             });
 

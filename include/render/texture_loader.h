@@ -2,6 +2,7 @@
 #define HIGH_SHIFT_TEXTURE_LOADER_H
 
 #include "common/handle_manager.h"
+
 #include <expected.h>
 #include <string>
 #include <filesystem>
@@ -23,10 +24,9 @@ namespace render {
         TextureLoader(TextureLoader &&) = default;
         TextureLoader &operator=(TextureLoader &&) = default;
 
-        tl::expected<Handle<Texture2d>, std::string> load_from_file(std::filesystem::path path);
+        tl::expected<Handle<Texture2d>, std::string> load_from_file(std::filesystem::path path, std::string type);
         Texture2d *get_texture(Handle<Texture2d> handle) const;
         bool unload_texture(Handle<Texture2d> handle);
-
 
     private:
         class Impl;

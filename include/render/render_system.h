@@ -18,7 +18,7 @@ namespace render {
 
     struct MeshRenderer {
         using Storage = ecs::VecStorage<MeshRenderer>;
-        Mesh *mesh;
+        Handle<Model> model_handle;
         ShaderProgram *shader_program;
     };
 
@@ -41,6 +41,7 @@ namespace render {
         void setup(ecs::World &world);
         void update(ecs::GameLoopControl &game_loop,
                     const TextureLoader &texture_loader,
+                    const ModelLoader &model_loader,
                     const MeshRenderer::Storage &renderers,
                     const Transform::Storage &transforms,
                     const Camera::Storage &cameras);

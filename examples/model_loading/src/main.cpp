@@ -110,14 +110,21 @@ int main() {
     auto cam = render::Camera{glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f)};
     entities.create(tr, cam);
 
+    auto result = setup_shaders();
+    if (!result) {
+        std::cerr << result.error();
+        exit(1);
+    }
 
-    auto &texture_loader = dispatcher.get_world().get<render::TextureLoader>();
-    auto container = texture_loader.load_from_file("assets/container.jpg").value();
-    texture_loader.get_texture(container)->type = "texture_diffuse";
+    auto &model_loader = dispatcher.get_world().get<render::ModelLoader>();
+    auto model = model_loader.load_model("assets/backpack/backpack.obj").value();
+
+    /*auto &texture_loader = dispatcher.get_world().get<render::TextureLoader>();
+    auto container = texture_loader.load_from_file("assets/container.jpg", "texture_diffuse").value();
 
 
-    /*Texture2d awesomeface;
-    awesomeface.load_texture("assets/awesomeface.png", GL_RGBA);*/
+    *//*Texture2d awesomeface;
+    awesomeface.load_texture("assets/awesomeface.png", GL_RGBA);*//*
 
 
 
@@ -137,14 +144,13 @@ int main() {
 
     setup_mesh(&cube_mesh);
 
-    auto result = setup_shaders();
-    if (!result) {
-        std::cerr << result.error();
-        exit(1);
-    }
+
 
     for (auto pos : cube_positions)
         entities.create(render::Transform{pos, glm::quat(1.0f, 0, 0, 0)},
-                        render::MeshRenderer{&cube_mesh, &result.value()});
+                        render::MeshRenderer{&cube_mesh, &result.value()});*/
+    entities.create(render::Transform{glm::vec3(0.0f, 0.0f, 0.0f),
+                                      glm::quat(1.0f, 0, 0, 0)},
+                    render::MeshRenderer{model, &result.value()});
     dispatcher.run();
 }

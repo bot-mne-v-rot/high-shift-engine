@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstring>
 #include <utility>
+#include <iostream>
 
 template<typename T>
 union Handle {
@@ -110,6 +111,8 @@ template<typename T>
 void HandleManager<T>::reserve(std::size_t new_capacity) {
     if (new_capacity <= cp || new_capacity == 0)
         return;
+
+    std::cout << "reserving capacity " << new_capacity << " for " << typeid(T).name() << " handle" << std::endl;
 
     std::size_t new_cp = 1;
     while (new_cp < new_capacity)

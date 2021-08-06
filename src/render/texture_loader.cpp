@@ -3,16 +3,25 @@
 #include <GLFW/glfw3.h>
 #include <stb_image.h>
 
+#include <unordered_map>
 #include <utility>
 #include "common/handle_manager.h"
+
+namespace fs = std::filesystem;
 
 namespace render {
     class TextureLoader::Impl {
     public:
-        tl::expected<Handle<Texture2d>, std::string> load_from_file(std::filesystem::path path) {
+        tl::expected<Handle<Texture2d>, std::string> load_from_file(fs::path path, std::string type) {
+            path = fs::canonical(path);
+            auto handle_it = loaded_textures.find(fs::hash_value(path));
+            if (handle_it != loaded_textures.end() && handle_manager.get(handle_it->second))
+                return handle_it->second;
+
             Texture2d *tex = new Texture2d();
             glGenTextures(1, &tex->id);
             glBindTexture(GL_TEXTURE_2D, tex->id);
+            tex->type = std::move(type);
             int width, height, nrChannels;
             uint8_t *data = stbi_load(path.c_str(), &width, &height, &nrChannels, 0);
             if (data) {
@@ -22,7 +31,10 @@ namespace render {
                 return tl::make_unexpected<std::string>("Failed to load image from path " + path.string());
             }
             stbi_image_free(data);
-            return handle_manager.insert(tex);
+
+            auto handle = handle_manager.insert(tex);
+            loaded_textures[fs::hash_value(path)] = handle;
+            return handle;
         }
 
         Texture2d *get_texture(Handle<Texture2d> handle) const {
@@ -48,11 +60,12 @@ namespace render {
         }
 
     private:
+        std::unordered_map<std::size_t, Handle<Texture2d>> loaded_textures;
         HandleManager<Texture2d> handle_manager;
     };
 
-    tl::expected<Handle<Texture2d>, std::string> TextureLoader::load_from_file(std::filesystem::path path) {
-        return impl->load_from_file(std::move(path));
+    tl::expected<Handle<Texture2d>, std::string> TextureLoader::load_from_file(std::filesystem::path path, std::string type) {
+        return impl->load_from_file(std::move(path), std::move(type));
     }
 
     Texture2d *TextureLoader::get_texture(Handle<Texture2d> handle) const {

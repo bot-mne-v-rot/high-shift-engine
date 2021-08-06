@@ -5,6 +5,7 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <glm/gtc/type_ptr.hpp>
+#include <stb_image.h>
 
 namespace render {
     static void framebuffer_size_callback(GLFWwindow *, int width, int height) {
@@ -51,6 +52,7 @@ namespace render {
 
     static void setup_GL() {
         glEnable(GL_DEPTH_TEST);
+        stbi_set_flip_vertically_on_load(true);
     }
 
     static void render_mesh(const Mesh &mesh,
@@ -91,10 +93,14 @@ namespace render {
             setup_viewport(window);
             setup_callbacks(window);
             setup_GL();
+
+            world.emplace<TextureLoader>();
+            world.emplace<ModelLoader>(world.get<TextureLoader>());
         }
 
         void update(ecs::GameLoopControl &game_loop,
                     const TextureLoader &texture_loader,
+                    const ModelLoader &model_loader,
                     const MeshRenderer::Storage &renderers,
                     const Transform::Storage &transforms,
                     const Camera::Storage &cameras) {
@@ -108,21 +114,22 @@ namespace render {
             ecs::joined_foreach(transforms, cameras, [&](const Transform &cam_transform, const Camera &camera) {
                 glm::mat4 projection = camera.projection;
 
-
-
                 glm::mat4 view = glm::mat4(1.0f);
                 view = glm::translate(view, cam_transform.position);
                 view *= glm::toMat4(cam_transform.rotation);
 
                 ecs::joined_foreach(transforms, renderers, [&](const Transform &ent_transform,
                                                               const MeshRenderer &renderer) {
-                    glm::mat4 model = glm::mat4(1.0f);
-                    model = glm::translate(model, ent_transform.position);
-                    model = model * glm::toMat4(ent_transform.rotation);
-                    glm::mat4 mapping = projection * view * model;
+                    glm::mat4 local_to_world = glm::mat4(1.0f);
+                    local_to_world = glm::translate(local_to_world, ent_transform.position);
+                    local_to_world = local_to_world * glm::toMat4(ent_transform.rotation);
+                    glm::mat4 mapping = projection * view * local_to_world;
                     renderer.shader_program->use();
                     renderer.shader_program->set_mat4("mapping", glm::value_ptr(mapping));
-                    render_mesh(*renderer.mesh, texture_loader, *renderer.shader_program);
+                    Model* model = model_loader.get_model(renderer.model_handle);
+                    for (auto& mesh : model->meshes) {
+                        render_mesh(mesh, texture_loader, *renderer.shader_program);
+                    }
                 });
             });
 
@@ -131,7 +138,9 @@ namespace render {
         }
 
         void teardown(ecs::World &world) {
-            glfwTerminate();
+            world.erase<ModelLoader>(); // must be deleted before TextureLoader
+            world.erase<TextureLoader>();
+            glfwTerminate(); // must appear last
         }
 
     private:
@@ -152,10 +161,11 @@ namespace render {
 
     void RenderSystem::update(ecs::GameLoopControl &game_loop_control,
                               const TextureLoader &texture_loader,
+                              const ModelLoader &model_loader,
                               const MeshRenderer::Storage &renderers,
                               const Transform::Storage &transforms,
                               const Camera::Storage &cameras) {
-        impl->update(game_loop_control, texture_loader, renderers, transforms, cameras);
+        impl->update(game_loop_control, texture_loader, model_loader, renderers, transforms, cameras);
     }
 
     void RenderSystem::teardown(ecs::World &world) {

@@ -20,24 +20,22 @@ namespace render {
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     }
 
-    static GLFWwindow *create_window() {
+    [[nodiscard]] static tl::expected<GLFWwindow *, std::string> create_window() {
         GLFWwindow *window = glfwCreateWindow(800, 600,
                                               "Я ебал твою тёлку. У!",
                                               nullptr, nullptr);
         if (!window) {
-            std::cerr << "Failed to create GLFW window" << std::endl;
             glfwTerminate();
-            return nullptr;
+            return tl::make_unexpected("Failed to create GLFW window");
         }
         glfwMakeContextCurrent(window);
         return window;
     }
 
-    static void setup_glad() {
-        if (!gladLoadGLLoader((GLADloadproc) glfwGetProcAddress)) {
-            std::cout << "Failed to initialize GLAD" << std::endl;
-            return;
-        }
+    [[nodiscard]] static tl::expected<void, std::string> setup_glad() {
+        if (!gladLoadGLLoader((GLADloadproc) glfwGetProcAddress))
+            return tl::make_unexpected("Failed to initialize GLAD");
+        return {};
     }
 
     static void setup_viewport(GLFWwindow *window) {
@@ -66,36 +64,51 @@ namespace render {
 
             // retrieve texture number (the N in diffuse_textureN)
             std::string number;
-            std::string name = tex->type;
-            if (name == "texture_diffuse")
-                number = std::to_string(diffuseNr++);
-            else if (name == "texture_specular")
-                number = std::to_string(specularNr++);
+            std::string name;
+            switch (tex->type) {
+                case Texture2d::diffuse:
+                    name = "texture_diffuse";
+                    number = std::to_string(diffuseNr++);
+                    break;
+                case Texture2d::specular:
+                    name = "texture_specular";
+                    number = std::to_string(specularNr++);
+                    break;
+                default:
+                    continue; // unsupported texture type
+            }
 
-            shader.set_int((name + number).c_str(), i);
+            shader.set_int(("material." + name + number).c_str(), i);
             glBindTexture(GL_TEXTURE_2D, tex->id);
         }
         glActiveTexture(GL_TEXTURE0);
 
         // draw mesh
         glBindVertexArray(mesh.VAO);
-        //glDrawArrays(GL_TRIANGLES, 0, 36);
         glDrawElements(GL_TRIANGLES, mesh.indices.size(), GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
     }
 
     class RenderSystem::Impl {
     public:
-        void setup(ecs::World &world) {
+        tl::expected<void, std::string> setup(ecs::World &world) {
             setup_glfw();
-            window = create_window();
-            setup_glad();
+
+            if (auto result = create_window())
+                window = result.value();
+            else return tl::make_unexpected(result.error());
+
+            if (auto result = setup_glad()) {}
+            else return result;
+
             setup_viewport(window);
             setup_callbacks(window);
             setup_GL();
 
             world.emplace<TextureLoader>();
             world.emplace<ModelLoader>(world.get<TextureLoader>());
+
+            return {};
         }
 
         void update(ecs::GameLoopControl &game_loop,
@@ -123,6 +136,7 @@ namespace render {
                     glm::mat4 local_to_world = glm::mat4(1.0f);
                     local_to_world = glm::translate(local_to_world, ent_transform.position);
                     local_to_world = local_to_world * glm::toMat4(ent_transform.rotation);
+
                     glm::mat4 mapping = projection * view * local_to_world;
                     renderer.shader_program->use();
                     renderer.shader_program->set_mat4("mapping", glm::value_ptr(mapping));
@@ -155,8 +169,8 @@ namespace render {
         delete impl;
     }
 
-    void RenderSystem::setup(ecs::World &world) {
-        impl->setup(world);
+    tl::expected<void, std::string> RenderSystem::setup(ecs::World &world) {
+        return impl->setup(world);
     }
 
     void RenderSystem::update(ecs::GameLoopControl &game_loop_control,

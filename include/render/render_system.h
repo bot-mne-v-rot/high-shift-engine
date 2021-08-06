@@ -38,13 +38,15 @@ namespace render {
         RenderSystem(const RenderSystem &) = delete;
         RenderSystem &operator=(const RenderSystem &) = delete;
 
-        void setup(ecs::World &world);
+        tl::expected<void, std::string> setup(ecs::World &world);
+
         void update(ecs::GameLoopControl &game_loop,
                     const TextureLoader &texture_loader,
                     const ModelLoader &model_loader,
                     const MeshRenderer::Storage &renderers,
                     const Transform::Storage &transforms,
                     const Camera::Storage &cameras);
+
         void teardown(ecs::World &world);
 
     private:

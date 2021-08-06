@@ -28,10 +28,32 @@ public:
     HandleManager(HandleManager &&other);
     HandleManager &operator=(HandleManager &&other);
 
+    /**
+     * Gets data associated with handle.
+     * @return associated data if handle is valid, nullptr otherwise
+     */
     [[nodiscard]] T *get(Handle<T> handle) const;
+
+    /**
+     * Creates new handle and associates it with data.
+     * @return handle associated with data.
+     */
     Handle<T> insert(T *data);
-    bool update(Handle<T> handle, T *new_data); // true if handle is valid
-    bool erase(Handle<T> handle); // true if handle was valid
+
+    /**
+     * Associate new_data with handle.
+     * @return true if handle is valid.
+     */
+    bool update(Handle<T> handle, T *new_data);
+
+    /**
+     * Invalidates handle.
+     * @return ptr to associated data.
+     * @return nullptr if handle was invalid.
+     */
+    T *erase(Handle<T> handle);
+
+    bool is_valid(Handle<T> handle) const;
 
     void reserve(std::size_t new_capacity);
 
@@ -42,6 +64,10 @@ public:
 
     ~HandleManager();
 
+    /**
+     * Iterates over each valid handle and calls functor with associated data.
+     * @tparam Fn -- any functor with signature like void(T *)
+     */
     template<typename U, typename Fn>
     friend void foreach(const HandleManager<U> &manager, Fn &&f);
 
@@ -159,13 +185,15 @@ Handle<T> HandleManager<T>::insert(T *data) {
 }
 
 template<typename T>
-bool HandleManager<T>::erase(Handle<T> handle) {
+T *HandleManager<T>::erase(Handle<T> handle) {
     if (handle.index >= cp)
-        return false;
+        return nullptr;
 
     Entry &entry = entries[handle.index];
     if (entry.version != handle.version)
-        return false;
+        return nullptr;
+
+    T *data = entry.data;
 
     ++entry.version;
 
@@ -174,6 +202,18 @@ bool HandleManager<T>::erase(Handle<T> handle) {
     free_list = handle.index;
 
     --sz;
+
+    return data;
+}
+
+template<typename T>
+bool HandleManager<T>::is_valid(Handle<T> handle) const {
+    if (handle.index >= cp)
+        return false;
+
+    Entry &entry = entries[handle.index];
+    if (entry.version != handle.version)
+        return false;
 
     return true;
 }

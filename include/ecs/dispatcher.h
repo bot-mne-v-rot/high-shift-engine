@@ -40,19 +40,36 @@ namespace ecs {
     public:
         Dispatcher() : Dispatcher(World()) {}
 
-        /**
-         * Calls all the setup methods for systems that provide id.
-         * Automatically creates all the resources used by the systems.
-         */
         explicit Dispatcher(World world_) : world(std::move(world_)) {
             world.emplace<Entities>(&world);
             world.emplace<GameLoopControl>();
+        };
 
-            detail::tuple_for_each(systems, [this]<System S>(S &system) {
-                if constexpr(SystemHasSetup<S>)
-                    system.setup(world);
-                detail::setup_resources(world, &S::update);
-            });
+        /**
+         * Calls all the setup methods for systems that provide id.
+         * Automatically creates all the resources used by the systems.
+         *
+         * If one of the Systems failed to create,
+         * destroys all of the created systems.
+         */
+        tl::expected<void, std::string> setup() {
+            tl::expected<void, std::string> result;
+            detail::tuple_for_each_branching(
+                    systems,
+                    [&, this]<System S>(S &system) {
+                        if constexpr(SystemHasSetup<S>)
+                            result = system.setup(world);
+                        detail::setup_resources(world, &S::update);
+                        return (bool) result;
+                    },
+                    [this]<System S>(S &system) {
+                        if constexpr(SystemHasTeardown<S>)
+                            system.teardown(world);
+                    }
+            );
+            if (result)
+                successfully_created = true;
+            return result;
         }
 
         /**
@@ -67,7 +84,7 @@ namespace ecs {
 
         void run() {
             auto &game_loop_control = world.get<GameLoopControl>();
-            while (!game_loop_control.stopped())
+            while (successfully_created && !game_loop_control.stopped())
                 update();
         }
 
@@ -83,13 +100,16 @@ namespace ecs {
          * Calls all the teardown methods for systems that provide id.
          */
         ~Dispatcher() {
-            detail::tuple_for_each(systems, [this]<System S>(S &system) {
-                if constexpr(SystemHasTeardown<S>)
+            if (successfully_created) {
+                detail::tuple_for_each(systems, [this]<System S>(S &system) {
+                    if constexpr(SystemHasTeardown<S>)
                     system.teardown(world);
-            });
+                });
+            }
         }
 
     private:
+        bool successfully_created = false;
         World world;
         std::tuple<Systems...> systems;
     };

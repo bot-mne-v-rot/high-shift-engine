@@ -10,7 +10,7 @@ namespace ecs {
     template<Storage S>
     class InvertedStorage {
     public:
-        using IdSetType = IdSetNot<std::remove_cvref_t<decltype(std::declval<S>().present())>>;
+        using IdSetType = decltype(~std::declval<S>().present());
 
         using Component = EmptyComponent;
         using Reference = Component &;

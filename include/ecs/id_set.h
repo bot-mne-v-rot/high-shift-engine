@@ -154,6 +154,14 @@ namespace ecs {
 
     ecs_define_id_set_iterator(IdSet);
 
+    template<typename A, typename B>
+    concept IdSetBinaryOpRequirement =
+            requires { IdSetLike<std::remove_cvref_t<A>> && IdSetLike<std::remove_cvref_t<B>>; };
+
+    template<typename A>
+    concept IdSetUnaryOpRequirement =
+            requires { IdSetLike<std::remove_cvref_t<A>>; };
+
     /**
      * Virtual Id Set that represents intersection
      * of two Id Sets (bitwise AND of the bitmasks).
@@ -174,7 +182,8 @@ namespace ecs {
      * Layer 0: 0000 0000 ...
      *
      */
-    template<IdSetLike A, IdSetLike B>
+    template<typename A, typename B>
+    requires IdSetBinaryOpRequirement<A, B>
     class IdSetAnd {
     public:
         using value_type = Id;
@@ -183,7 +192,7 @@ namespace ecs {
         using difference_type = std::ptrdiff_t;
         using size_type = std::size_t;
 
-        IdSetAnd(const A &a, const B &b) : a(a), b(b) {}
+        IdSetAnd(A &&a, B &&b) : a(std::forward<A>(a)), b(std::forward<B>(b)) {}
 
         bool contains(Id id) const;
         bool empty() const;
@@ -204,16 +213,18 @@ namespace ecs {
         const_iterator cend() const;
 
     private:
-        const A &a;
-        const B &b;
+        A a;
+        B b;
     };
 
-    template<IdSetLike A, IdSetLike B>
+    template<typename A, typename B>
+    requires IdSetBinaryOpRequirement<A, B>
     ecs_define_id_set_iterator(IdSetAnd<A, B>);
 
-    template<IdSetLike A, IdSetLike B>
-    inline IdSetAnd<A, B> operator&(const A &a, const B &b) {
-        return IdSetAnd<A, B>(a, b);
+    template<typename A, typename B>
+    requires IdSetBinaryOpRequirement<A, B>
+    inline IdSetAnd<A, B> operator&(A &&a, B &&b) {
+        return IdSetAnd<A, B>(std::forward<A>(a), std::forward<B>(b));
     }
 
     /**
@@ -222,7 +233,8 @@ namespace ecs {
      *
      * @note It's effectively bitwise OR of each level.
      */
-    template<IdSetLike A, IdSetLike B>
+    template<typename A, typename B>
+    requires IdSetBinaryOpRequirement<A, B>
     class IdSetOr {
     public:
         using value_type = Id;
@@ -231,7 +243,7 @@ namespace ecs {
         using difference_type = std::ptrdiff_t;
         using size_type = std::size_t;
 
-        IdSetOr(const A &a, const B &b) : a(a), b(b) {}
+        IdSetOr(A &&a, B &&b) : a(std::forward<A>(a)), b(std::forward<B>(b)) {}
 
         bool contains(Id id) const;
         bool empty() const;
@@ -252,16 +264,18 @@ namespace ecs {
         const_iterator cend() const;
 
     private:
-        const A &a;
-        const B &b;
+        A a;
+        B b;
     };
 
-    template<IdSetLike A, IdSetLike B>
+    template<typename A, typename B>
+    requires IdSetBinaryOpRequirement<A, B>
     ecs_define_id_set_iterator(IdSetOr<A, B>);
 
-    template<IdSetLike A, IdSetLike B>
-    inline IdSetOr<A, B> operator|(const A &a, const B &b) {
-        return IdSetOr<A, B>(a, b);
+    template<typename A, typename B>
+    requires IdSetBinaryOpRequirement<A, B>
+    inline IdSetOr<A, B> operator|(A &&a, B &&b) {
+        return IdSetOr<A, B>(std::forward<A>(a), std::forward<B>(b));
     }
 
     /**
@@ -275,7 +289,8 @@ namespace ecs {
      * @note It's effectively bitwise NOT of the bottom level
      * while others are constant 1s.
      */
-    template<IdSetLike S>
+    template<typename S>
+    requires IdSetUnaryOpRequirement<S>
     class IdSetNot {
     public:
         using value_type = Id;
@@ -284,7 +299,7 @@ namespace ecs {
         using difference_type = std::ptrdiff_t;
         using size_type = std::size_t;
 
-        explicit IdSetNot(const S &set) : set(set) {}
+        explicit IdSetNot(S &&set) : set(std::forward<S>(set)) {}
 
         bool contains(Id id) const;
         bool empty() const;
@@ -305,15 +320,17 @@ namespace ecs {
         const_iterator cend() const;
 
     private:
-        const S &set;
+        S set;
     };
 
-    template<IdSetLike S>
+    template<typename S>
+    requires IdSetUnaryOpRequirement<S>
     ecs_define_id_set_iterator(IdSetNot<S>);
 
-    template<IdSetLike S>
-    inline IdSetNot<S> operator~(const S &set) {
-        return IdSetNot<S>(set);
+    template<typename S>
+    requires IdSetUnaryOpRequirement<S>
+    inline IdSetNot<S> operator~(S &&set) {
+        return IdSetNot<S>(std::forward<S>(set));
     }
 
     /**

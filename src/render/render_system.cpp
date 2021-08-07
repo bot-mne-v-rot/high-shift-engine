@@ -50,7 +50,6 @@ namespace render {
 
     static void setup_GL() {
         glEnable(GL_DEPTH_TEST);
-        stbi_set_flip_vertically_on_load(true);
     }
 
     static void render_mesh(const Mesh &mesh,

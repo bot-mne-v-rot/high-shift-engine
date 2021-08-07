@@ -4,16 +4,18 @@
 #include "expected.h"
 #include "filesystem"
 #include "common/handle_manager.h"
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
+#include "render/shader.h"
+
+namespace fs = std::filesystem;
+
 
 namespace render {
 
-    struct Shader {
-
-    };
-
-
-    class ShaderProgram {
-
+    struct ShaderPath {
+        fs::path path;
+        Shader::Type texture_type;
     };
 
     class ShaderLoader {
@@ -26,11 +28,11 @@ namespace render {
         ShaderLoader(ShaderLoader &&) = default;
         ShaderLoader &operator=(ShaderLoader &&) = default;
 
-        [[nodiscard]] tl::expected<Handle<Shader>, std::string>
-        load_shader_from_file(std::filesystem::path path);
+        [[nodiscard]] tl::expected<Handle<ShaderProgram>, std::string>
+        create_program(const std::vector<ShaderPath>&);
 
-        ShaderProgram *get_shader(Handle<ShaderProgram> handle) const;
-        bool unload_shader(Handle<ShaderProgram> handle);
+        [[nodiscard]] ShaderProgram *get_shader_program(Handle<ShaderProgram> handle) const;
+        bool unload_shader_program(Handle<ShaderProgram> handle);
 
     private:
         class Impl;

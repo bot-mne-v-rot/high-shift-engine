@@ -77,7 +77,7 @@ namespace render {
                     continue; // unsupported texture type
             }
 
-            shader.set_int(("material." + name + number).c_str(), i);
+            shader.set_int((name + number).c_str(), i);
             glBindTexture(GL_TEXTURE_2D, tex->id);
         }
         glActiveTexture(GL_TEXTURE0);
@@ -104,6 +104,7 @@ namespace render {
             setup_callbacks(window);
             setup_GL();
 
+            world.emplace<ShaderLoader>();
             world.emplace<TextureLoader>();
             world.emplace<ModelLoader>(world.get<TextureLoader>());
 
@@ -111,6 +112,7 @@ namespace render {
         }
 
         void update(ecs::GameLoopControl &game_loop,
+                    const ShaderLoader &shader_loader,
                     const TextureLoader &texture_loader,
                     const ModelLoader &model_loader,
                     const MeshRenderer::Storage &renderers,
@@ -136,14 +138,16 @@ namespace render {
                     local_to_world = glm::translate(local_to_world, ent_transform.position);
                     local_to_world = local_to_world * glm::toMat4(ent_transform.rotation);
 
+                    auto *shader_program = shader_loader.get_shader_program(renderer.shader_program_handle);
+
                     glm::mat4 mapping = projection * view * local_to_world;
-                    renderer.shader_program->use();
-                    renderer.shader_program->set_mat4("mapping", glm::value_ptr(mapping));
+                    shader_program->use();
+                    shader_program->set_mat4("mapping", mapping);
 
                     Model *model = model_loader.get_model(renderer.model_handle);
                     if (model)
                         for (auto &mesh : model->meshes)
-                            render_mesh(mesh, texture_loader, *renderer.shader_program);
+                            render_mesh(mesh, texture_loader, *shader_program);
                 });
             });
 
@@ -152,6 +156,7 @@ namespace render {
         }
 
         void teardown(ecs::World &world) {
+            world.erase<ShaderLoader>();
             world.erase<ModelLoader>(); // must be deleted before TextureLoader
             world.erase<TextureLoader>();
             glfwTerminate(); // must appear last
@@ -174,12 +179,13 @@ namespace render {
     }
 
     void RenderSystem::update(ecs::GameLoopControl &game_loop_control,
+                              const ShaderLoader &shader_loader,
                               const TextureLoader &texture_loader,
                               const ModelLoader &model_loader,
                               const MeshRenderer::Storage &renderers,
                               const Transform::Storage &transforms,
                               const Camera::Storage &cameras) {
-        impl->update(game_loop_control, texture_loader, model_loader, renderers, transforms, cameras);
+        impl->update(game_loop_control, shader_loader, texture_loader, model_loader, renderers, transforms, cameras);
     }
 
     void RenderSystem::teardown(ecs::World &world) {

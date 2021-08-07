@@ -1,77 +1,12 @@
 #include "render/shader.h"
 
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
+#include <glm/gtc/type_ptr.hpp>
+
 #include <fstream>
 
 namespace render {
-    Shader::Shader(type t) : id(glCreateShader((GLenum) t)) {}
-
-    Shader::Shader(Shader &&other) noexcept: id(0) {
-        *this = std::move(other);
-    }
-
-    Shader &Shader::operator=(Shader &&other) noexcept {
-        std::swap(const_cast<GLuint &>(id),
-                  const_cast<GLuint &>(other.id));
-        return *this;
-    }
-
-    tl::expected<void, std::string>
-    Shader::load(std::string_view source) const {
-        const char *c_str = source.data();
-        glShaderSource(id, 1, &c_str, nullptr);
-        glCompileShader(id);
-
-        int success;
-        glGetShaderiv(id, GL_COMPILE_STATUS, &success);
-        if (!success) {
-            char info_log[512];
-            glGetShaderInfoLog(id, sizeof(info_log), nullptr, info_log);
-            return tl::make_unexpected(std::string(info_log));
-        }
-        return {};
-    }
-
-    tl::expected<void, std::string>
-    Shader::load_from_file(const std::filesystem::path &path) const {
-        std::ifstream fin(path.string());
-        std::string source((std::istreambuf_iterator<char>(fin)),
-                           std::istreambuf_iterator<char>());
-        return load(source);
-    }
-
-    Shader::~Shader() {
-        glDeleteShader(id);
-    }
-
-    ShaderProgram::ShaderProgram() : id(glCreateProgram()) {}
-
-    ShaderProgram::ShaderProgram(ShaderProgram &&other) noexcept: id(0) {
-        *this = std::move(other);
-    }
-
-    ShaderProgram &ShaderProgram::operator=(ShaderProgram &&other) noexcept {
-        std::swap(const_cast<GLuint &>(id),
-                  const_cast<GLuint &>(other.id));
-        return *this;
-    }
-
-    void ShaderProgram::attach(const Shader &sh) const {
-        glAttachShader(id, sh.id);
-    }
-
-    tl::expected<void, std::string> ShaderProgram::link() const {
-        glLinkProgram(id);
-
-        int success;
-        glGetProgramiv(id, GL_LINK_STATUS, &success);
-        if (!success) {
-            char info_log[512];
-            glGetProgramInfoLog(id, sizeof(info_log), nullptr, info_log);
-            return tl::make_unexpected(std::string(info_log));
-        }
-        return {};
-    }
-
     void ShaderProgram::use() const {
         glUseProgram(id);
     }
@@ -88,11 +23,50 @@ namespace render {
         glUniform1i(glGetUniformLocation(id, name.data()), (int) value);
     }
 
+    void ShaderProgram::set_mat4(std::string_view name, const glm::mat4 &mat) const {
+        glUniformMatrix4fv(glGetUniformLocation(id, name.data()), 1, GL_FALSE, glm::value_ptr(mat));
+    }
+
+    Shader::Shader(Shader::Type type) {
+        switch (type) {
+            case Shader::vertex:
+                id = glCreateShader(GL_VERTEX_SHADER);
+                break;
+            case Shader::fragment:
+                id = glCreateShader(GL_FRAGMENT_SHADER);
+                break;
+        }
+    }
+
+    Shader::Shader(Shader &&other) noexcept {
+        id = other.id;
+        other.id = 0;
+    }
+
+    Shader &Shader::operator=(Shader &&other) noexcept {
+        std::swap(other.id, id);
+        return *this;
+    }
+
+    Shader::~Shader() {
+        glDeleteShader(id);
+    }
+
+    ShaderProgram::ShaderProgram() {
+        id = glCreateProgram();
+    }
+
     ShaderProgram::~ShaderProgram() {
         glDeleteProgram(id);
     }
 
-    void ShaderProgram::set_mat4(std::string_view name, float* value) const {
-        glUniformMatrix4fv(glGetUniformLocation(id, name.data()), 1, GL_FALSE, value);
+    ShaderProgram::ShaderProgram(ShaderProgram &&other) noexcept {
+        id = other.id;
+        other.id = 0;
+    }
+
+    ShaderProgram &ShaderProgram::operator=(ShaderProgram &&other) noexcept {
+        std::swap(id, other.id);
+        return *this;
     }
 }

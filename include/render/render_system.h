@@ -8,6 +8,7 @@
 #include "render/model_loader.h"
 #include "render/shader.h"
 #include "render/texture_loader.h"
+#include "render/shader_loader.h"
 
 namespace render {
     struct Transform {
@@ -19,7 +20,7 @@ namespace render {
     struct MeshRenderer {
         using Storage = ecs::VecStorage<MeshRenderer>;
         Handle<Model> model_handle;
-        ShaderProgram *shader_program;
+        Handle<ShaderProgram> shader_program_handle;
     };
 
     struct Camera {
@@ -41,6 +42,7 @@ namespace render {
         tl::expected<void, std::string> setup(ecs::World &world);
 
         void update(ecs::GameLoopControl &game_loop,
+                    const ShaderLoader &shader_loader,
                     const TextureLoader &texture_loader,
                     const ModelLoader &model_loader,
                     const MeshRenderer::Storage &renderers,

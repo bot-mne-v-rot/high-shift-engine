@@ -35,7 +35,7 @@ shader::load_from_file(const std::filesystem::path &path) const {
     std::ifstream fin(path.string());
     std::string source((std::istreambuf_iterator<char>(fin)),
                        std::istreambuf_iterator<char>());
-    return load(source);
+
 }
 
 shader::~shader() {

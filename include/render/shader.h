@@ -8,6 +8,10 @@
 
 namespace render {
 
+    /**
+     * Holds shader id from OpenGL and uses
+     * RAII to control shader's lifetime.
+     */
     class Shader {
     public:
         enum Type {

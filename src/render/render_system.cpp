@@ -118,13 +118,26 @@ namespace render {
                     const ModelLoader &model_loader,
                     const MeshRenderer::Storage &renderers,
                     const Transform::Storage &transforms,
+                    const Light::Storage &lights,
                     const Camera::Storage &cameras) {
             if (glfwWindowShouldClose(window)) {
                 game_loop.stop();
                 return;
             }
-            glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+            glClearColor(0.f, 0.f, 0.f, 1.0f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+            ecs::joined_foreach(transforms, lights, renderers, [&](const Transform &light_transform,
+                                                            const Light &light,
+                                                            const MeshRenderer &renderer)
+                                                            {
+               auto shader = shader_loader.get_shader_program(renderer.shader_program_handle);
+               shader->use();
+               shader->set_vec3("lightPos", light_transform.position);
+               shader->set_vec3("objectColor", 1.0f, 0.5f, 0.31f);
+               shader->set_vec3("lightColor", light.color);
+               //std::cout << "kek" << std::endl;
+            });
 
             ecs::joined_foreach(transforms, cameras, [&](const Transform &cam_transform, const Camera &camera) {
                 glm::mat4 projection = camera.projection;
@@ -185,8 +198,9 @@ namespace render {
                               const ModelLoader &model_loader,
                               const MeshRenderer::Storage &renderers,
                               const Transform::Storage &transforms,
+                              const Light::Storage &lights,
                               const Camera::Storage &cameras) {
-        impl->update(game_loop_control, shader_loader, texture_loader, model_loader, renderers, transforms, cameras);
+        impl->update(game_loop_control, shader_loader, texture_loader, model_loader, renderers, transforms, lights, cameras);
     }
 
     void RenderSystem::teardown(ecs::World &world) {

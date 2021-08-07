@@ -52,6 +52,8 @@ namespace render {
         void set_float(std::string_view name, float value) const;
         void set_bool(std::string_view name, bool value) const;
         void set_mat4(std::string_view name, const glm::mat4 &mat) const;
+        void set_vec3(std::string_view name, const glm::vec3 &vec) const;
+        void set_vec3(std::string_view name, float x, float y, float z) const;
 
         unsigned int id;
     };

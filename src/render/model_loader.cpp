@@ -50,6 +50,9 @@ namespace render {
         }
 
         tl::expected<Handle<Model>, std::string> load_model(const fs::path &path) {
+            if (!exists(path))
+                return tl::make_unexpected("file " + path.string() + " does not exist");
+
             Assimp::Importer import;
             const aiScene *scene = import.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs);
 

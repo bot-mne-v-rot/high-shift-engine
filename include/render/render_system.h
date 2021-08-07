@@ -26,9 +26,11 @@ namespace render {
     struct Camera {
         using Storage = ecs::SparseVecStorage<Camera>;
         glm::mat4 projection;
+    };
 
-        // glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
-        // glm::toMat4
+    struct Light {
+        using Storage = ecs::VecStorage<Light>;
+        glm::vec3 color;
     };
 
     class RenderSystem {
@@ -47,6 +49,7 @@ namespace render {
                     const ModelLoader &model_loader,
                     const MeshRenderer::Storage &renderers,
                     const Transform::Storage &transforms,
+                    const Light::Storage &lights,
                     const Camera::Storage &cameras);
 
         void teardown(ecs::World &world);

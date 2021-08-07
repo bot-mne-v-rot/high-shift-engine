@@ -25,6 +25,9 @@ namespace render {
 
             // Воняет, не умею работать с ifstream нормально
             std::ifstream fin(path.string());
+            if (!fin) {
+                return tl::make_unexpected("Failed to open shader path: " + path.string());
+            }
             std::string source((std::istreambuf_iterator<char>(fin)),
                                std::istreambuf_iterator<char>());
             source.data();

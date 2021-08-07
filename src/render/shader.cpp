@@ -27,6 +27,14 @@ namespace render {
         glUniformMatrix4fv(glGetUniformLocation(id, name.data()), 1, GL_FALSE, glm::value_ptr(mat));
     }
 
+    void ShaderProgram::set_vec3(std::string_view name, const glm::vec3 &vec) const {
+        glUniform3f(glGetUniformLocation(id, name.data()), vec.x, vec.y, vec.z);
+    }
+
+    void ShaderProgram::set_vec3(std::string_view name, float x, float y, float z) const {
+        glUniform3f(glGetUniformLocation(id, name.data()), x, y, z);
+    }
+
     Shader::Shader(Shader::Type type) {
         switch (type) {
             case Shader::vertex:

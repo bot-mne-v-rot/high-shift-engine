@@ -1,6 +1,5 @@
-#[[
 cmake_minimum_required(VERSION 3.2)
-project(model_loading)
+project(lighting)
 
 # Flags
 set(CMAKE_CXX_STANDARD 20)
@@ -52,4 +51,3 @@ target_link_libraries(${PROJECT_NAME} "assimp")
 
 # Other libs
 include_directories("${LIB_DIR}/other")
-]]

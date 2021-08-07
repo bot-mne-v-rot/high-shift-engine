@@ -3,10 +3,15 @@ out vec4 FragColor;
 
 in vec2 TexCoord;
 
-uniform sampler2D texture_diffuse0;
-uniform sampler2D texture_diffuse1;
+struct Material {
+    sampler2D texture_diffuse0;
+    sampler2D texture_specular0;
+};
 
-void main()
-{
-    FragColor = mix(texture(texture_diffuse0, TexCoord), texture(texture_diffuse1, TexCoord), 0.0);
+uniform Material material;
+
+void main() {
+    vec4 diffuse_color = texture(material.texture_diffuse0, TexCoord);
+    vec4 specular_color = texture(material.texture_specular0, TexCoord);
+    FragColor = mix(diffuse_color, specular_color, 0.0);
 }

@@ -8,6 +8,8 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
+namespace fs = std::filesystem;
+
 namespace render {
     static void setup_mesh(Mesh *mesh) {
         glGenVertexArrays(1, &mesh->VAO);
@@ -44,11 +46,10 @@ namespace render {
         ~Impl() {
             foreach(handle_manager, [](Model *model) {
                 unload_model_raw(model);
-                delete model;
             });
         }
 
-        tl::expected<Handle<Model>, std::string> load_model(const std::filesystem::path &path) {
+        tl::expected<Handle<Model>, std::string> load_model(const fs::path &path) {
             Assimp::Importer import;
             const aiScene *scene = import.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs);
 
@@ -67,21 +68,19 @@ namespace render {
         }
 
         bool unload_model(Handle<Model> handle) {
-            if (Model *model = handle_manager.get(handle)) {
+            if (Model *model = handle_manager.erase(handle)) {
                 unload_model_raw(model);
-                handle_manager.erase(handle);
                 return true;
             }
             return false;
         }
 
         bool unload_model_and_textures(Handle<Model> handle) {
-            if (Model *model = handle_manager.get(handle)) {
+            if (Model *model = handle_manager.erase(handle)) {
                 for (auto& mesh : model->meshes)
                     for (auto& texture : mesh.textures)
                         texture_loader.unload_texture(texture);
                 unload_model_raw(model);
-                handle_manager.erase(handle);
                 return true;
             }
             return false;
@@ -92,10 +91,25 @@ namespace render {
         HandleManager<Model> handle_manager;
         TextureLoader &texture_loader;
 
+        void process_node(Model *model, const fs::path &directory,
+                          aiNode *node, const aiScene *scene) {
+            // Process all the node's meshes (if any)
+            for (unsigned int i = 0; i < node->mNumMeshes; i++) {
+                aiMesh *mesh = scene->mMeshes[node->mMeshes[i]];
+                model->meshes.push_back(process_mesh(mesh, scene, directory));
+            }
+
+            // Then do the same for each of its children
+            for (unsigned int i = 0; i < node->mNumChildren; i++) {
+                process_node(model, directory, node->mChildren[i], scene);
+            }
+        }
+
         Mesh process_mesh(aiMesh *mesh, const aiScene *scene,
-                          const std::filesystem::path &directory) {
+                          const fs::path &directory) {
             Mesh result;
 
+            // Process vertices
             result.vertices.reserve(mesh->mNumVertices);
             for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
                 Vertex vertex;
@@ -117,17 +131,22 @@ namespace render {
 
                 result.vertices.push_back(vertex);
             }
-            // process indices
+
+            // Process indices
+            result.indices.reserve(mesh->mNumFaces * 3);
             for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
                 aiFace face = mesh->mFaces[i];
+
+                // Due to aiProcess_Triangulate option should be always 3
                 for (unsigned int j = 0; j < face.mNumIndices; j++)
                     result.indices.push_back(face.mIndices[j]);
             }
-            // process material
+
+            // Process material
             if (mesh->mMaterialIndex >= 0) {
                 aiMaterial *material = scene->mMaterials[mesh->mMaterialIndex];
-                load_material_textures(result.textures, directory, material, aiTextureType_DIFFUSE, "texture_diffuse");
-                load_material_textures(result.textures, directory, material, aiTextureType_SPECULAR, "texture_specular");
+                load_material_textures(result.textures, directory, material, aiTextureType_DIFFUSE, Texture2d::diffuse);
+                load_material_textures(result.textures, directory, material, aiTextureType_SPECULAR, Texture2d::specular);
             }
 
             setup_mesh(&result);
@@ -135,27 +154,15 @@ namespace render {
             return result;
         }
 
-        void process_node(Model *model, const std::filesystem::path &directory,
-                          aiNode *node, const aiScene *scene) {
-            // process all the node's meshes (if any)
-            for (unsigned int i = 0; i < node->mNumMeshes; i++) {
-                aiMesh *mesh = scene->mMeshes[node->mMeshes[i]];
-                model->meshes.push_back(process_mesh(mesh, scene, directory));
-            }
-            // then do the same for each of its children
-            for (unsigned int i = 0; i < node->mNumChildren; i++) {
-                process_node(model, directory, node->mChildren[i], scene);
-            }
-        }
-
         void load_material_textures(std::vector<Handle<Texture2d>> &textures,
-                                    const std::filesystem::path &directory,
-                                    aiMaterial *mat, aiTextureType type, std::string type_name) {
-            for (unsigned int i = 0; i < mat->GetTextureCount(type); i++) {
+                                    const fs::path &directory,
+                                    aiMaterial *mat, aiTextureType ai_type, Texture2d::Type type) {
+            for (unsigned int i = 0; i < mat->GetTextureCount(ai_type); i++) {
                 aiString str;
-                mat->GetTexture(type, i, &str);
+                mat->GetTexture(ai_type, i, &str);
+
                 textures.push_back(
-                        texture_loader.load_from_file(directory / str.C_Str(), type_name).value()
+                        texture_loader.load_from_file(directory / str.C_Str(), type).value()
                 );
             }
         }

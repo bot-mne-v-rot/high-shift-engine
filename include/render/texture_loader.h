@@ -10,9 +10,11 @@
 namespace render {
     struct Texture2d {
         unsigned int id;
-        std::string type;
+        enum Type {
+            diffuse,
+            specular
+        } type;
     };
-
 
     class TextureLoader {
     public:
@@ -24,7 +26,9 @@ namespace render {
         TextureLoader(TextureLoader &&) = default;
         TextureLoader &operator=(TextureLoader &&) = default;
 
-        tl::expected<Handle<Texture2d>, std::string> load_from_file(std::filesystem::path path, std::string type);
+        [[nodiscard]] tl::expected<Handle<Texture2d>, std::string>
+        load_from_file(std::filesystem::path path, Texture2d::Type type);
+
         Texture2d *get_texture(Handle<Texture2d> handle) const;
         bool unload_texture(Handle<Texture2d> handle);
 

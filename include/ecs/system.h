@@ -5,6 +5,7 @@
 #include "ecs/world.h"
 #include "ecs/utils.h"
 
+#include <expected.h>
 #include <concepts>
 
 namespace ecs {
@@ -53,10 +54,12 @@ namespace ecs {
      *
      * It would be called by Dispatcher during setup routine
      * and before automatic resources' creation.
+     *
+     * The setup may fail and return tl::unexpected.
      */
     template<class S>
     concept SystemHasSetup = requires(S sys, World &world) {
-        sys.setup(world);
+        { sys.setup(world) } -> std::same_as<tl::expected<void, std::string>>;
     };
 
     /**

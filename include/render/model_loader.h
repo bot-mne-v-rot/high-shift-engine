@@ -39,7 +39,9 @@ namespace render {
         ModelLoader(ModelLoader &&) = default;
         ModelLoader &operator=(ModelLoader &&) = default;
 
-        tl::expected<Handle<Model>, std::string> load_model(const std::filesystem::path &path);
+        [[nodiscard]] tl::expected<Handle<Model>, std::string>
+        load_model(const std::filesystem::path &path);
+
         Model *get_model(Handle<Model> handle) const; // nullptr if handle is invalid
         bool unload_model(Handle<Model> handle); // true if handle was valid
         bool unload_model_and_textures(Handle<Model> handle); // true if handle was valid

@@ -6,78 +6,6 @@
 #include "iostream"
 #include "common/handle_manager.h"
 
-std::vector<float> raw_vert = {
-        -0.5f, -0.5f, -0.5f, 0.0f, 0.0f,
-        0.5f, -0.5f, -0.5f, 1.0f, 0.0f,
-        0.5f, 0.5f, -0.5f, 1.0f, 1.0f,
-        0.5f, 0.5f, -0.5f, 1.0f, 1.0f,
-        -0.5f, 0.5f, -0.5f, 0.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f, 0.0f, 0.0f,
-
-        -0.5f, -0.5f, 0.5f, 0.0f, 0.0f,
-        0.5f, -0.5f, 0.5f, 1.0f, 0.0f,
-        0.5f, 0.5f, 0.5f, 1.0f, 1.0f,
-        0.5f, 0.5f, 0.5f, 1.0f, 1.0f,
-        -0.5f, 0.5f, 0.5f, 0.0f, 1.0f,
-        -0.5f, -0.5f, 0.5f, 0.0f, 0.0f,
-
-        -0.5f, 0.5f, 0.5f, 1.0f, 0.0f,
-        -0.5f, 0.5f, -0.5f, 1.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
-        -0.5f, -0.5f, 0.5f, 0.0f, 0.0f,
-        -0.5f, 0.5f, 0.5f, 1.0f, 0.0f,
-
-        0.5f, 0.5f, 0.5f, 1.0f, 0.0f,
-        0.5f, 0.5f, -0.5f, 1.0f, 1.0f,
-        0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
-        0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
-        0.5f, -0.5f, 0.5f, 0.0f, 0.0f,
-        0.5f, 0.5f, 0.5f, 1.0f, 0.0f,
-
-        -0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
-        0.5f, -0.5f, -0.5f, 1.0f, 1.0f,
-        0.5f, -0.5f, 0.5f, 1.0f, 0.0f,
-        0.5f, -0.5f, 0.5f, 1.0f, 0.0f,
-        -0.5f, -0.5f, 0.5f, 0.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
-
-        -0.5f, 0.5f, -0.5f, 0.0f, 1.0f,
-        0.5f, 0.5f, -0.5f, 1.0f, 1.0f,
-        0.5f, 0.5f, 0.5f, 1.0f, 0.0f,
-        0.5f, 0.5f, 0.5f, 1.0f, 0.0f,
-        -0.5f, 0.5f, 0.5f, 0.0f, 0.0f,
-        -0.5f, 0.5f, -0.5f, 0.0f, 1.0f
-};
-
-std::vector<unsigned int> indices = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
-                                     12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
-                                     24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35};
-
-glm::vec3 cube_positions[] = {
-        glm::vec3(0.0f, 0.0f, 0.0f),
-        glm::vec3(2.0f, 5.0f, -15.0f),
-        glm::vec3(-1.5f, -2.2f, -2.5f),
-        glm::vec3(-3.8f, -2.0f, -12.3f),
-        glm::vec3(2.4f, -0.4f, -3.5f),
-        glm::vec3(-1.7f, 3.0f, -7.5f),
-        glm::vec3(1.3f, -2.0f, -2.5f),
-        glm::vec3(1.5f, 2.0f, -2.5f),
-        glm::vec3(1.5f, 0.2f, -1.5f),
-        glm::vec3(-1.3f, 1.0f, -1.5f)
-};
-
-/*render::Shader vert_shader(render::Shader::type::vertex);
-vert_shader.load_from_file("/shaders/cube.vert");
-render::Shader frag_shader(render::Shader::type::fragment);
-frag_shader.load_from_file("/shaders/cube.frag");
-render::ShaderProgram shader_program;
-shader_program.attach(vert_shader);
-shader_program.attach(frag_shader);*/
-
-/*const char* vertex_shader_path = "/shaders/cube.vert";
-const char* fragment_shader_path = "/shaders/cube.frag";*/
-
 std::filesystem::path vertex_shader_path = std::filesystem::current_path() / "shaders" / "cube.vert";
 std::filesystem::path fragment_shader_path = std::filesystem::current_path() / "shaders" / "cube.frag";
 
@@ -103,11 +31,18 @@ tl::expected<render::ShaderProgram, std::string> setup_shaders() {
 
 int main() {
     ecs::Dispatcher<render::RenderSystem> dispatcher;
-    HandleManager<render::Mesh> mesh_handler;
+    if (auto result = dispatcher.setup()) {}
+    else {
+        std::cerr << result.error() << std::endl;
+        return 1;
+    }
+
     auto &entities = dispatcher.get_world().get<ecs::Entities>();
-    auto tr = render::Transform({glm::vec3(0.0f, 0.0f, -3.0f),
+    auto tr = render::Transform({glm::vec3(0.0f, 0.0f, -6.0f),
                                  glm::quat(glm::vec3(0.f, 0.f, 0.f))});
-    auto cam = render::Camera{glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f)};
+    auto cam = render::Camera{
+        glm::perspective(glm::radians(45.0f),
+                         800.0f / 600.0f, 0.1f, 100.0f)};
     entities.create(tr, cam);
 
     auto result = setup_shaders();
@@ -119,38 +54,8 @@ int main() {
     auto &model_loader = dispatcher.get_world().get<render::ModelLoader>();
     auto model = model_loader.load_model("assets/backpack/backpack.obj").value();
 
-    /*auto &texture_loader = dispatcher.get_world().get<render::TextureLoader>();
-    auto container = texture_loader.load_from_file("assets/container.jpg", "texture_diffuse").value();
-
-
-    *//*Texture2d awesomeface;
-    awesomeface.load_texture("assets/awesomeface.png", GL_RGBA);*//*
-
-
-
-    std::vector<render::Vertex> vertices;
-    for (int i = 0; i < 36; i++) {
-        auto pos = glm::vec3(raw_vert[i * 5], raw_vert[i * 5 + 1], raw_vert[i * 5 + 2]);
-        auto norm = glm::vec3(0.0f, 0.0f, 0.0f);
-        auto tex = glm::vec2(raw_vert[i * 5 + 3], raw_vert[i * 5 + 4]);
-        vertices.emplace_back(render::Vertex{pos, norm, tex});
-    }
-
-    render::Mesh cube_mesh{
-            vertices,
-            indices,
-            {container}
-    };
-
-    setup_mesh(&cube_mesh);
-
-
-
-    for (auto pos : cube_positions)
-        entities.create(render::Transform{pos, glm::quat(1.0f, 0, 0, 0)},
-                        render::MeshRenderer{&cube_mesh, &result.value()});*/
     entities.create(render::Transform{glm::vec3(0.0f, 0.0f, 0.0f),
-                                      glm::quat(1.0f, 0, 0, 0)},
+                                      glm::quat(glm::vec3(0.f, glm::radians(-90.f), 0.f))},
                     render::MeshRenderer{model, &result.value()});
     dispatcher.run();
 }

@@ -5,6 +5,7 @@
 #include "ecs/world.h"
 #include "ecs/utils.h"
 
+#include <expected.h>
 #include <concepts>
 
 namespace ecs {
@@ -45,6 +46,32 @@ namespace ecs {
         requires std::is_default_constructible_v<S>;
         &S::update; // has update method
         requires detail::all_params_are_lvalue_refs_to_resources_v<decltype(&S::update)>;
+    };
+
+    /**
+     * Optionally System can provide setup method that
+     * accepts reference to World.
+     *
+     * It would be called by Dispatcher during setup routine
+     * and before automatic resources' creation.
+     *
+     * The setup may fail and return tl::unexpected.
+     */
+    template<class S>
+    concept SystemHasSetup = requires(S sys, World &world) {
+        { sys.setup(world) } -> std::same_as<tl::expected<void, std::string>>;
+    };
+
+    /**
+     * Optionally System can provide teardown method that
+     * accepts reference to World.
+     *
+     * It would be called by Dispatcher during teardown routine
+     * and before System's destructor.
+     */
+    template<class S>
+    concept SystemHasTeardown = requires(S sys, World &world) {
+        sys.teardown(world);
     };
 }
 

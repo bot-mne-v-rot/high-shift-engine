@@ -14,8 +14,18 @@ file(GLOB_RECURSE TEST_SOURCES
         "${PROJECT_SOURCE_DIR}/test/*.h"
         "${PROJECT_SOURCE_DIR}/test/*.cpp")
 
+file(GLOB_RECURSE ENGINE_RENDER_SOURCES
+        "${PROJECT_SOURCE_DIR}/src/render/*.h"
+        "${PROJECT_SOURCE_DIR}/src/render/*.cpp")
+
+file(GLOB_RECURSE ENGINE_INPUT_SOURCES
+        "${PROJECT_SOURCE_DIR}/src/input/*.h"
+        "${PROJECT_SOURCE_DIR}/src/input/*.cpp")
+
+set(ENGINE_SOURCES ${ENGINE_RENDER_SOURCES} ${ENGINE_INPUT_SOURCES})
+
 include_directories(include)
-add_executable(${PROJECT_NAME} src/main.cpp ${SOURCES})
+add_executable(${PROJECT_NAME} src/main.cpp ${ENGINE_SOURCES})
 add_executable(${TEST_TARGET} ${SOURCES} ${TEST_SOURCES})
 
 # GLFW

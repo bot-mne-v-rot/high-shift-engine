@@ -4,6 +4,7 @@
 #include "ecs/system.h"
 #include "ecs/entities.h"
 #include "ecs/utils.h"
+#include "ecs/game_loop_control.h"
 
 #include <tuple>
 
@@ -39,16 +40,36 @@ namespace ecs {
     public:
         Dispatcher() : Dispatcher(World()) {}
 
-        /**
-         * Creates all the resources used by the systems.
-         */
         explicit Dispatcher(World world_) : world(std::move(world_)) {
             world.emplace<Entities>(&world);
-            detail::tuple_for_each(systems,[this] < System
-            S > (S & system)
-            {
-                detail::setup_resources(world, &S::update);
-            });
+            world.emplace<GameLoopControl>();
+        };
+
+        /**
+         * Calls all the setup methods for systems that provide id.
+         * Automatically creates all the resources used by the systems.
+         *
+         * If one of the Systems failed to create,
+         * destroys all of the created systems.
+         */
+        tl::expected<void, std::string> setup() {
+            tl::expected<void, std::string> result;
+            detail::tuple_for_each_branching(
+                    systems,
+                    [&, this]<System S>(S &system) {
+                        if constexpr(SystemHasSetup<S>)
+                            result = system.setup(world);
+                        detail::setup_resources(world, &S::update);
+                        return (bool) result;
+                    },
+                    [this]<System S>(S &system) {
+                        if constexpr(SystemHasTeardown<S>)
+                            system.teardown(world);
+                    }
+            );
+            if (result)
+                successfully_created = true;
+            return result;
         }
 
         /**
@@ -56,11 +77,15 @@ namespace ecs {
          * when update method of each system is called.
          */
         void update() {
-            detail::tuple_for_each(systems,[this] < System
-            S > (S & system)
-            {
+            detail::tuple_for_each(systems, [this]<System S>(S &system) {
                 detail::update_with_resources(world, system, &S::update);
             });
+        }
+
+        void run() {
+            auto &game_loop_control = world.get<GameLoopControl>();
+            while (successfully_created && !game_loop_control.stopped())
+                update();
         }
 
         World &get_world() {
@@ -71,7 +96,20 @@ namespace ecs {
             return world;
         }
 
+        /**
+         * Calls all the teardown methods for systems that provide id.
+         */
+        ~Dispatcher() {
+            if (successfully_created) {
+                detail::tuple_for_each(systems, [this]<System S>(S &system) {
+                    if constexpr(SystemHasTeardown<S>)
+                    system.teardown(world);
+                });
+            }
+        }
+
     private:
+        bool successfully_created = false;
         World world;
         std::tuple<Systems...> systems;
     };

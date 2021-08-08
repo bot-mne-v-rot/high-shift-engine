@@ -27,9 +27,6 @@ namespace render {
     struct Camera {
         using Storage = ecs::SparseVecStorage<Camera>;
         glm::mat4 projection;
-
-        // glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
-        // glm::toMat4
     };
 
     class RenderSystem {

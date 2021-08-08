@@ -1,9 +1,7 @@
 #include "ecs/ecs.h"
 #include "render/render_system.h"
-#include "vector"
-#include "glm/vec3.hpp"
-#include "iostream"
-#include "common/handle_manager.h"
+
+#include <iostream>
 
 std::filesystem::path vertex_shader_path = std::filesystem::current_path() / "shaders" / "cube.vert";
 std::filesystem::path fragment_shader_path = std::filesystem::current_path() / "shaders" / "cube.frag";
@@ -13,7 +11,9 @@ int main() {
     if (auto result = ecs::Dispatcher::create<render::RenderSystem>()) {
         dispatcher = std::move(result.value());
     } else {
-        std::cerr << result.error() << std::endl;
+        std::visit([](auto &&err) {
+            std::cerr << err.message << std::endl;
+        }, result.error());
         return 1;
     }
 

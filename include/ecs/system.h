@@ -57,12 +57,26 @@ namespace ecs {
         struct is_system_setup_signature<Ret (This::*)(ecs::World &, Args...)>
                 : public std::bool_constant<(std::is_lvalue_reference_v<Args> && ...) &&
                 (System<std::remove_cvref_t<Args>> && ...) &&
-                std::is_same_v<Ret, tl::expected<void, std::string>>> {
+                (std::is_same_v<Ret, tl::expected<void, std::string>> ||
+                std::is_same_v<Ret, void>)> {
                 };
 
         template<typename F>
         constexpr bool is_system_setup_signature_v =
                 is_system_setup_signature<F>::value;
+
+        template<typename>
+        struct return_type_is_tl_unexpected : public std::false_type {
+        };
+
+        template<typename Ret, typename This, typename ...Args>
+        struct return_type_is_tl_unexpected<Ret (This::*)(Args...)>
+                : public std::is_same<Ret, tl::expected<void, std::string>> {
+                };
+
+        template<typename F>
+        constexpr bool return_type_is_tl_unexpected_v =
+                return_type_is_tl_unexpected<F>::value;
     }
 
     /**
@@ -72,12 +86,21 @@ namespace ecs {
      * It would be called by Dispatcher during setup routine
      * and before automatic resources' creation.
      *
-     * The setup may fail and return tl::unexpected.
+     * Signature must be Ret setup(ecs::World &, S1 &, S2 &, ...)
+     * S1, S2, ... is either ecs::System or const ecs::System.
+     * Number of systems is arbitrary.
+     *
+     * Ret is either void or tl::expected<void, std::string>.
      */
     template<class S>
     concept SystemHasSetup = requires {
         &S::setup;
         requires detail::is_system_setup_signature_v<decltype(&S::setup)>;
+    };
+
+    template<class S>
+    concept SystemSetupMayFail = requires {
+        requires detail::return_type_is_tl_unexpected_v<decltype(&S::setup)>;
     };
 
     /**

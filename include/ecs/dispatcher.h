@@ -7,6 +7,7 @@
 #include "ecs/game_loop_control.h"
 
 #include <tuple>
+#include <variant>
 
 namespace ecs {
     namespace detail {
@@ -15,6 +16,7 @@ namespace ecs {
         static const std::size_t max_systems = 128;
         using ISystemsArray = std::array<ISystem, max_systems>;
         using ISystemsVector = std::vector<detail::ISystem>;
+        using ISystemsBitset = std::bitset<max_systems>;
 
         class ISystem {
         public:
@@ -44,8 +46,20 @@ namespace ecs {
                 return deps;
             }
 
+            const std::vector<std::string> &dependencies_names() const {
+                return deps_names;
+            }
+
             uint32_t id() const {
                 return id_;
+            }
+
+            const std::string &name() const {
+                return type_name;
+            }
+
+            void *ptr() const {
+                return system_ptr;
             }
 
         private:
@@ -64,6 +78,8 @@ namespace ecs {
             uint32_t id_ = 0;
             void *system_ptr = nullptr;
             std::vector<uint32_t> deps;
+            std::vector<std::string> deps_names;
+            std::string type_name;
         };
     }
 
@@ -82,8 +98,26 @@ namespace ecs {
         Dispatcher(Dispatcher &&) = default;
         Dispatcher &operator=(Dispatcher &&) = default;
 
+        struct SystemError {
+            std::string failed_system;
+            std::string message;
+        };
+
+        struct DependencyError {
+            std::string dependent_name;
+            std::string dependency_name;
+            std::string message;
+
+            enum Type {
+                unsatisfied,
+                circular
+            } type;
+        };
+
+        using DispatcherError = std::variant<SystemError, DependencyError>;
+
         template<System... Systems>
-        static tl::expected<Dispatcher, std::string> create();
+        static tl::expected<Dispatcher, DispatcherError> create();
 
         /**
          * Takes all the resources used by the systems and injects them
@@ -93,17 +127,21 @@ namespace ecs {
 
         void loop() {
             auto &game_loop_control = world->get<GameLoopControl>();
-            while (successfully_created && !game_loop_control.stopped())
+            while (!game_loop_control.stopped())
                 update();
         }
 
-        World &get_world() {
-            return *world;
-        }
+        template<System S>
+        S &get_system();
 
-        const World &get_world() const {
-            return *world;
-        }
+        template<System S>
+        const S &get_system() const;
+
+        template<System S>
+        bool has_system() const;
+
+        World &get_world();
+        const World &get_world() const;
 
         /**
          * Calls all the teardown methods for systems that provide id.
@@ -116,7 +154,7 @@ namespace ecs {
         void add();
 
         template<System S>
-        void _add();
+        void add_single();
 
         /**
          * Calls all the setup methods for systems that provide id.
@@ -125,10 +163,11 @@ namespace ecs {
          * If one of the Systems failed to setup,
          * calls all the teardowns of the systems that have been already set up.
          */
-        [[nodiscard]] tl::expected<void, std::string> setup();
+        [[nodiscard]] tl::expected<void, DispatcherError> setup();
 
         detail::ISystemsArray systems_by_id;
         detail::ISystemsVector systems;
+        detail::ISystemsBitset systems_presence;
 
         bool successfully_created = false;
         std::unique_ptr<World> world; // unique_ptr to be easily relocated

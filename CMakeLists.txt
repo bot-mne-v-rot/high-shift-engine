@@ -22,11 +22,15 @@ file(GLOB_RECURSE ENGINE_INPUT_SOURCES
         "${PROJECT_SOURCE_DIR}/src/input/*.h"
         "${PROJECT_SOURCE_DIR}/src/input/*.cpp")
 
-set(ENGINE_SOURCES ${ENGINE_RENDER_SOURCES} ${ENGINE_INPUT_SOURCES})
+file(GLOB_RECURSE ENGINE_ECS_SOURCES
+        "${PROJECT_SOURCE_DIR}/src/ecs/*.h"
+        "${PROJECT_SOURCE_DIR}/src/ecs/*.cpp")
+
+set(ENGINE_SOURCES ${ENGINE_RENDER_SOURCES} ${ENGINE_INPUT_SOURCES} ${ENGINE_ECS_SOURCES})
 
 include_directories(include)
 add_executable(${PROJECT_NAME} src/main.cpp ${ENGINE_SOURCES})
-add_executable(${TEST_TARGET} ${SOURCES} ${TEST_SOURCES})
+add_executable(${TEST_TARGET} ${TEST_SOURCES})
 
 # GLFW
 set(GLFW_DIR "${LIB_DIR}/glfw")

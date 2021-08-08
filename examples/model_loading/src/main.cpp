@@ -10,9 +10,10 @@ std::filesystem::path vertex_shader_path = std::filesystem::current_path() / "sh
 std::filesystem::path fragment_shader_path = std::filesystem::current_path() / "shaders" / "cube.frag";
 
 int main() {
-    ecs::Dispatcher<render::RenderSystem> dispatcher;
-    if (auto result = dispatcher.setup()) {}
-    else {
+    ecs::Dispatcher dispatcher;
+    if (auto result = ecs::Dispatcher::create<render::RenderSystem>()) {
+        dispatcher = std::move(result.value());
+    } else {
         std::cerr << result.error() << std::endl;
         return 1;
     }
@@ -41,13 +42,11 @@ int main() {
     }
     auto shader_program = result.value();
 
-
-
     auto &model_loader = dispatcher.get_world().get<render::ModelLoader>();
     auto model = model_loader.load_model("assets/backpack/backpack.obj").value();
 
     entities.create(render::Transform{glm::vec3(0.0f, 0.0f, 0.0f),
                                       glm::quat(glm::vec3(0.f, glm::radians(-90.f), 0.f))},
                     render::MeshRenderer{model, shader_program});
-    dispatcher.run();
+    dispatcher.loop();
 }

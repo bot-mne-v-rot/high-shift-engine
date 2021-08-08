@@ -10,24 +10,61 @@
 
 namespace ecs {
     namespace detail {
-        template<typename R>
-        void setup_resource(ecs::World &world) {
-            if constexpr(std::is_default_constructible_v<R>)
-                if (!world.has<R>())
-                    world.emplace<R>();
-        }
+        class ISystem;
 
-        // https://stackoverflow.com/questions/42255534/c-execute-an-action-for-each-type-in-a-given-list
-        template<typename Ret, System This, typename ...Args>
-        void setup_resources(ecs::World &world, Ret (This::*)(Args...)) {
-            int unused[] = {(setup_resource<std::remove_cvref_t<Args>>(world), 0)...};
-            (void) unused; // to avoid a warning
-        }
+        static const std::size_t max_systems = 128;
+        using ISystemsArray = std::array<ISystem, max_systems>;
+        using ISystemsVector = std::vector<detail::ISystem>;
 
-        template<typename Ret, System This, typename ...Args>
-        void update_with_resources(ecs::World &world, This &system, Ret (This::*update)(Args...)) {
-            (system.*update)(world.get<std::remove_cvref_t<Args>>()...);
-        }
+        class ISystem {
+        public:
+            ISystem() = default;
+
+            template<System S>
+            explicit ISystem(S *system_ptr);
+
+            [[nodiscard]] tl::expected<void, std::string>
+            setup(ecs::World &world, const ISystemsArray &systems_by_id) {
+                return f_setup(system_ptr, world, systems_by_id);
+            }
+
+            void update(ecs::World &world) {
+                f_update(system_ptr, world);
+            }
+
+            void teardown(ecs::World &world) {
+                f_teardown(system_ptr, world);
+            }
+
+            void destroy_and_delete() {
+                f_delete(system_ptr);
+            }
+
+            const std::vector<uint32_t> &dependencies() const {
+                return deps;
+            }
+
+            uint32_t id() const {
+                return id_;
+            }
+
+        private:
+            using FnSetup = tl::expected<void, std::string> (*)(void *, ecs::World &, const ISystemsArray &);
+            FnSetup f_setup = nullptr;
+
+            using FnUpdate = void (*)(void *, ecs::World &);
+            FnUpdate f_update = nullptr;
+
+            using FnTeardown = void (*)(void *, ecs::World &);
+            FnTeardown f_teardown = nullptr;
+
+            using FnDelete = void (*)(void *);
+            FnDelete f_delete = nullptr;
+
+            uint32_t id_ = 0;
+            void *system_ptr = nullptr;
+            std::vector<uint32_t> deps;
+        };
     }
 
     /**
@@ -35,84 +72,69 @@ namespace ecs {
      * resources used by the specified systems.
      * @tparam Systems
      */
-    template<System ...Systems>
     class Dispatcher {
     public:
-        Dispatcher() : Dispatcher(World()) {}
-
-        explicit Dispatcher(World world_) : world(std::move(world_)) {
-            world.emplace<Entities>(&world);
-            world.emplace<GameLoopControl>();
+        explicit Dispatcher() : world(std::make_unique<World>()) {
+            world->emplace<Entities>(world.get());
+            world->emplace<GameLoopControl>();
         };
 
-        /**
-         * Calls all the setup methods for systems that provide id.
-         * Automatically creates all the resources used by the systems.
-         *
-         * If one of the Systems failed to create,
-         * destroys all of the created systems.
-         */
-        tl::expected<void, std::string> setup() {
-            tl::expected<void, std::string> result;
-            detail::tuple_for_each_branching(
-                    systems,
-                    [&, this]<System S>(S &system) {
-                        if constexpr(SystemHasSetup<S>)
-                            result = system.setup(world);
-                        detail::setup_resources(world, &S::update);
-                        return (bool) result;
-                    },
-                    [this]<System S>(S &system) {
-                        if constexpr(SystemHasTeardown<S>)
-                            system.teardown(world);
-                    }
-            );
-            if (result)
-                successfully_created = true;
-            return result;
-        }
+        Dispatcher(Dispatcher &&) = default;
+        Dispatcher &operator=(Dispatcher &&) = default;
+
+        template<System... Systems>
+        static tl::expected<Dispatcher, std::string> create();
 
         /**
          * Takes all the resources used by the systems and injects them
          * when update method of each system is called.
          */
-        void update() {
-            detail::tuple_for_each(systems, [this]<System S>(S &system) {
-                detail::update_with_resources(world, system, &S::update);
-            });
-        }
+        void update();
 
-        void run() {
-            auto &game_loop_control = world.get<GameLoopControl>();
+        void loop() {
+            auto &game_loop_control = world->get<GameLoopControl>();
             while (successfully_created && !game_loop_control.stopped())
                 update();
         }
 
         World &get_world() {
-            return world;
+            return *world;
         }
 
         const World &get_world() const {
-            return world;
+            return *world;
         }
 
         /**
          * Calls all the teardown methods for systems that provide id.
+         * and calls all the systems' destructors.
          */
-        ~Dispatcher() {
-            if (successfully_created) {
-                detail::tuple_for_each(systems, [this]<System S>(S &system) {
-                    if constexpr(SystemHasTeardown<S>)
-                    system.teardown(world);
-                });
-            }
-        }
+        ~Dispatcher();
 
     private:
+        template<System... Systems>
+        void add();
+
+        template<System S>
+        void _add();
+
+        /**
+         * Calls all the setup methods for systems that provide id.
+         * Automatically creates all the resources used by the systems.
+         *
+         * If one of the Systems failed to setup,
+         * calls all the teardowns of the systems that have been already set up.
+         */
+        [[nodiscard]] tl::expected<void, std::string> setup();
+
+        detail::ISystemsArray systems_by_id;
+        detail::ISystemsVector systems;
+
         bool successfully_created = false;
-        World world;
-        std::tuple<Systems...> systems;
+        std::unique_ptr<World> world; // unique_ptr to be easily relocated
     };
 }
+
+#include "ecs/detail/dispatcher_impl.h"
 
 #endif //HIGH_SHIFT_DISPATCHER_H

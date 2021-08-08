@@ -83,6 +83,8 @@ namespace ecs {
         };
     }
 
+    class DispatcherBuilder;
+
     /**
      * Heart of the ECS. Statically dispatches all the
      * resources used by the specified systems.
@@ -153,8 +155,8 @@ namespace ecs {
         template<System... Systems>
         void add();
 
-        template<System S>
-        void add_single();
+        template<System S, typename... Args>
+        void add_single(Args &&...args);
 
         /**
          * Calls all the setup methods for systems that provide id.
@@ -169,8 +171,20 @@ namespace ecs {
         detail::ISystemsVector systems;
         detail::ISystemsBitset systems_presence;
 
+        friend DispatcherBuilder;
+
         bool successfully_created = false;
         std::unique_ptr<World> world; // unique_ptr to be easily relocated
+    };
+
+    class DispatcherBuilder {
+    public:
+        template<System S, typename... Args>
+        void add_system(Args &&...args);
+
+        tl::expected<Dispatcher, Dispatcher::DispatcherError> build();
+    private:
+        Dispatcher dispatcher;
     };
 }
 

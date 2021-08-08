@@ -120,8 +120,8 @@ namespace ecs {
         (void) unused; // to suppress warning
     }
 
-    template<System S>
-    void Dispatcher::add_single() {
+    template<System S, typename... Args>
+    void Dispatcher::add_single(Args &&...args) {
         S *system_ptr = new S();
         detail::ISystem i_system(system_ptr);
 
@@ -147,5 +147,10 @@ namespace ecs {
     template<System S>
     bool Dispatcher::has_system() const {
         return systems_presence[detail::get_system_id<S>()];
+    }
+
+    template<System S, typename... Args>
+    void DispatcherBuilder::add_system(Args &&...args) {
+        dispatcher.add_single<S>(std::forward<Args>(args)...);
     }
 }

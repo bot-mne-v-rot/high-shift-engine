@@ -129,4 +129,11 @@ namespace ecs {
     const World &Dispatcher::get_world() const {
         return *world;
     }
+
+    tl::expected<Dispatcher, Dispatcher::DispatcherError> DispatcherBuilder::build() {
+        if (auto result = dispatcher.setup())
+            return std::move(dispatcher);
+        else
+            return tl::make_unexpected(result.error());
+    }
 }

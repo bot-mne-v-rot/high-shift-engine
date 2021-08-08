@@ -1,53 +1,13 @@
 #include "render/render_system.h"
 
-
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+
+#include "window_data.h"
+
 #include <iostream>
-#include <glm/gtc/type_ptr.hpp>
-#include <stb_image.h>
 
 namespace render {
-    static void framebuffer_size_callback(GLFWwindow *, int width, int height) {
-        glViewport(0, 0, width, height);
-    }
-
-    static void setup_glfw() {
-        glfwInit();
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-    }
-
-    [[nodiscard]] static tl::expected<GLFWwindow *, std::string> create_window() {
-        GLFWwindow *window = glfwCreateWindow(800, 600,
-                                              "Я ебал твою тёлку. У!",
-                                              nullptr, nullptr);
-        if (!window) {
-            glfwTerminate();
-            return tl::make_unexpected("Failed to create GLFW window");
-        }
-        glfwMakeContextCurrent(window);
-        return window;
-    }
-
-    [[nodiscard]] static tl::expected<void, std::string> setup_glad() {
-        if (!gladLoadGLLoader((GLADloadproc) glfwGetProcAddress))
-            return tl::make_unexpected("Failed to initialize GLAD");
-        return {};
-    }
-
-    static void setup_viewport(GLFWwindow *window) {
-        int width, height;
-        glfwGetFramebufferSize(window, &width, &height);
-        glViewport(0, 0, width, height);
-    }
-
-    static void setup_callbacks(GLFWwindow *window) {
-        glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    }
-
     static void setup_GL() {
         glEnable(GL_DEPTH_TEST);
     }
@@ -90,19 +50,11 @@ namespace render {
 
     class RenderSystem::Impl {
     public:
-        tl::expected<void, std::string> setup(ecs::World &world) {
-            setup_glfw();
-
-            if (auto result = create_window())
-                window = result.value();
-            else return tl::make_unexpected(result.error());
-
-            if (auto result = setup_glad()) {}
-            else return result;
-
-            setup_viewport(window);
-            setup_callbacks(window);
+        tl::expected<void, std::string> setup(ecs::World &world,
+                                              const WindowSystem &window_system) {
             setup_GL();
+
+            window = window_system.get_window_data().window;
 
             world.emplace<ShaderLoader>();
             world.emplace<TextureLoader>();
@@ -111,17 +63,12 @@ namespace render {
             return {};
         }
 
-        void update(ecs::GameLoopControl &game_loop,
-                    const ShaderLoader &shader_loader,
+        void update(const ShaderLoader &shader_loader,
                     const TextureLoader &texture_loader,
                     const ModelLoader &model_loader,
                     const MeshRenderer::Storage &renderers,
                     const Transform::Storage &transforms,
                     const Camera::Storage &cameras) {
-            if (glfwWindowShouldClose(window)) {
-                game_loop.stop();
-                return;
-            }
             glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -159,7 +106,6 @@ namespace render {
             world.erase<ShaderLoader>();
             world.erase<ModelLoader>(); // must be deleted before TextureLoader
             world.erase<TextureLoader>();
-            glfwTerminate(); // must appear last
         }
 
     private:
@@ -174,18 +120,18 @@ namespace render {
         delete impl;
     }
 
-    tl::expected<void, std::string> RenderSystem::setup(ecs::World &world) {
-        return impl->setup(world);
+    tl::expected<void, std::string> RenderSystem::setup(ecs::World &world,
+                                                        const WindowSystem &window_system) {
+        return impl->setup(world, window_system);
     }
 
-    void RenderSystem::update(ecs::GameLoopControl &game_loop_control,
-                              const ShaderLoader &shader_loader,
+    void RenderSystem::update(const ShaderLoader &shader_loader,
                               const TextureLoader &texture_loader,
                               const ModelLoader &model_loader,
                               const MeshRenderer::Storage &renderers,
                               const Transform::Storage &transforms,
                               const Camera::Storage &cameras) {
-        impl->update(game_loop_control, shader_loader, texture_loader, model_loader, renderers, transforms, cameras);
+        impl->update(shader_loader, texture_loader, model_loader, renderers, transforms, cameras);
     }
 
     void RenderSystem::teardown(ecs::World &world) {

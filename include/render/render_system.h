@@ -5,6 +5,7 @@
 #include "glm/gtx/quaternion.hpp"
 
 #include "ecs/ecs.h"
+#include "render/window_system.h"
 #include "render/model_loader.h"
 #include "render/shader.h"
 #include "render/texture_loader.h"
@@ -39,10 +40,10 @@ namespace render {
         RenderSystem(const RenderSystem &) = delete;
         RenderSystem &operator=(const RenderSystem &) = delete;
 
-        tl::expected<void, std::string> setup(ecs::World &world);
+        tl::expected<void, std::string> setup(ecs::World &world,
+                                              const WindowSystem &window_system);
 
-        void update(ecs::GameLoopControl &game_loop,
-                    const ShaderLoader &shader_loader,
+        void update(const ShaderLoader &shader_loader,
                     const TextureLoader &texture_loader,
                     const ModelLoader &model_loader,
                     const MeshRenderer::Storage &renderers,

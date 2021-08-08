@@ -8,7 +8,7 @@ std::filesystem::path fragment_shader_path = std::filesystem::current_path() / "
 
 int main() {
     ecs::Dispatcher dispatcher;
-    if (auto result = ecs::Dispatcher::create<render::RenderSystem>()) {
+    if (auto result = ecs::Dispatcher::create<render::WindowSystem, render::RenderSystem>()) {
         dispatcher = std::move(result.value());
     } else {
         std::visit([](auto &&err) {

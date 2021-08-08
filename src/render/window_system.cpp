@@ -18,9 +18,9 @@ namespace render {
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     }
 
-    [[nodiscard]] static tl::expected<GLFWwindow *, std::string> create_window() {
-        GLFWwindow *window = glfwCreateWindow(800, 600,
-                                              "Я ебал твою тёлку. У!",
+    [[nodiscard]] static tl::expected<GLFWwindow *, std::string> create_window(const WindowArgs &args) {
+        GLFWwindow *window = glfwCreateWindow(args.width, args.height,
+                                              args.title.c_str(),
                                               nullptr, nullptr);
         if (!window) {
             glfwTerminate();
@@ -48,10 +48,12 @@ namespace render {
 
     class WindowSystem::Impl {
     public:
+        explicit Impl(WindowArgs args) : ctor_args(std::move(args)) {}
+
         tl::expected<void, std::string> setup(ecs::World &world) {
             setup_glfw();
 
-            if (auto result = create_window())
+            if (auto result = create_window(ctor_args))
                 window = result.value();
             else return tl::make_unexpected(result.error());
 
@@ -82,12 +84,13 @@ namespace render {
         }
 
     private:
-        WindowData window_data;
+        WindowData window_data {};
         GLFWwindow *window = nullptr;
+        WindowArgs ctor_args;
     };
 
-    WindowSystem::WindowSystem() {
-        impl = new Impl();
+    WindowSystem::WindowSystem(WindowArgs args) {
+        impl = new Impl(std::move(args));
     }
 
     WindowSystem::~WindowSystem() {

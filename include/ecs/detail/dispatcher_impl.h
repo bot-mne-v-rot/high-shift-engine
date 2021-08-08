@@ -122,7 +122,7 @@ namespace ecs {
 
     template<System S, typename... Args>
     void Dispatcher::add_single(Args &&...args) {
-        S *system_ptr = new S();
+        S *system_ptr = new S(std::forward<Args>(args)...);
         detail::ISystem i_system(system_ptr);
 
         systems_presence.set(i_system.id());
@@ -150,7 +150,8 @@ namespace ecs {
     }
 
     template<System S, typename... Args>
-    void DispatcherBuilder::add_system(Args &&...args) {
+    DispatcherBuilder &&DispatcherBuilder::add_system(Args &&...args) && {
         dispatcher.add_single<S>(std::forward<Args>(args)...);
+        return std::move(*this);
     }
 }

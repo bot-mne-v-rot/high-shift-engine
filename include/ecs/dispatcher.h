@@ -180,9 +180,9 @@ namespace ecs {
     class DispatcherBuilder {
     public:
         template<System S, typename... Args>
-        void add_system(Args &&...args);
+        DispatcherBuilder &&add_system(Args &&...args) &&;
 
-        tl::expected<Dispatcher, Dispatcher::DispatcherError> build();
+        tl::expected<Dispatcher, Dispatcher::DispatcherError> build() &&;
     private:
         Dispatcher dispatcher;
     };

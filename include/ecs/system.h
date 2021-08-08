@@ -43,7 +43,6 @@ namespace ecs {
      */
     template<class S>
     concept System = requires(S sys) {
-        requires std::is_default_constructible_v<S>;
         &S::update; // has update method
         requires detail::all_params_are_lvalue_refs_to_resources_v<decltype(&S::update)>;
     };

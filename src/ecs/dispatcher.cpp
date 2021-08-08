@@ -130,7 +130,7 @@ namespace ecs {
         return *world;
     }
 
-    tl::expected<Dispatcher, Dispatcher::DispatcherError> DispatcherBuilder::build() {
+    tl::expected<Dispatcher, Dispatcher::DispatcherError> DispatcherBuilder::build() && {
         if (auto result = dispatcher.setup())
             return std::move(dispatcher);
         else

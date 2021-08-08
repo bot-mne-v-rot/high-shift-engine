@@ -8,12 +8,20 @@ std::filesystem::path fragment_shader_path = std::filesystem::current_path() / "
 
 int main() {
     ecs::Dispatcher dispatcher;
-    if (auto result = ecs::Dispatcher::create<render::WindowSystem, render::RenderSystem>()) {
-        dispatcher = std::move(result.value());
+
+    auto dispatcher_result = ecs::DispatcherBuilder()
+            .add_system<render::WindowSystem>(render::WindowArgs{
+                .width = 800, .height = 600, .title = "Model loading example"
+            })
+            .add_system<render::RenderSystem>()
+            .build();
+
+    if (dispatcher_result) {
+        dispatcher = std::move(dispatcher_result.value());
     } else {
         std::visit([](auto &&err) {
             std::cerr << err.message << std::endl;
-        }, result.error());
+        }, dispatcher_result.error());
         return 1;
     }
 
@@ -21,8 +29,8 @@ int main() {
     auto tr = render::Transform({glm::vec3(0.0f, 0.0f, -6.0f),
                                  glm::quat(glm::vec3(0.f, 0.f, 0.f))});
     auto cam = render::Camera{
-        glm::perspective(glm::radians(45.0f),
-                         800.0f / 600.0f, 0.1f, 100.0f)};
+            glm::perspective(glm::radians(45.0f),
+                             800.0f / 600.0f, 0.1f, 100.0f)};
     entities.create(tr, cam);
 
     /*auto result = setup_shaders();
@@ -32,9 +40,9 @@ int main() {
     }*/
     auto &shader_loader = dispatcher.get_world().get<render::ShaderLoader>();
     auto result = shader_loader.create_program({
-        {vertex_shader_path, render::Shader::Type::vertex},
-        {fragment_shader_path, render::Shader::Type::fragment}
-    });
+                                                       {vertex_shader_path,   render::Shader::Type::vertex},
+                                                       {fragment_shader_path, render::Shader::Type::fragment}
+                                               });
 
     if (!result) {
         std::cerr << result.error();

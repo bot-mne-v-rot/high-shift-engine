@@ -4,10 +4,19 @@
 #include "ecs/ecs.h"
 
 namespace render {
+    struct WindowArgs {
+        std::size_t width;
+        std::size_t height;
+        std::string title;
+    };
+
     class WindowSystem {
     public:
-        WindowSystem();
+        explicit WindowSystem(WindowArgs args);
         ~WindowSystem();
+
+        WindowSystem(const WindowSystem &) = delete;
+        WindowSystem &operator=(const WindowSystem &) = delete;
 
         tl::expected<void, std::string> setup(ecs::World &world);
         void update(ecs::GameLoopControl &game_loop);
@@ -21,6 +30,8 @@ namespace render {
 
         Impl *impl = nullptr;
     };
+
+    static_assert(ecs::System<WindowSystem>);
 }
 
 #endif //HIGH_SHIFT_WINDOW_SYSTEM_H

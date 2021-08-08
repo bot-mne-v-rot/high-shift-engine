@@ -2,6 +2,9 @@
 
 #include "ecs/dispatcher.h"
 
+// Not used but https://github.com/onqtam/doctest/issues/126
+#include <iostream>
+
 namespace {
     struct SomeRes {
         int a = 0;

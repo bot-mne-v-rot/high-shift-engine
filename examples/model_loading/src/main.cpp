@@ -9,40 +9,80 @@ std::filesystem::path fragment_shader_path = std::filesystem::current_path() / "
 
 class MainCameraSystem {
 public:
-    void setup(ecs::World &world) {
+    void setup(ecs::World &world,
+               input::InputSystem &input_system) {
+        create_camera(world);
+        input_system.disable_cursor();
+    }
+
+    void update(render::Transform::Storage &transforms,
+                const input::Input &input,
+                ecs::GameLoopControl &game_loop,
+                const ecs::DeltaTime &delta_time) {
+        render::Transform &transform = transforms[camera_id];
+
+        if (input.on_key_down(input::KEY_ESCAPE))
+            game_loop.stop();
+
+        update_camera_pos(input, transform, delta_time());
+        update_camera_rot(input, transform);
+    }
+
+private:
+    ecs::Id camera_id = 0;
+
+    void create_camera(ecs::World &world) {
         auto &entities = world.get<ecs::Entities>();
         auto tr = render::Transform({glm::vec3(0.0f, 0.0f, 6.0f),
                                      glm::quat(glm::vec3(0.f, 0.f, 0.f))});
         auto cam = render::Camera{
-                .projection = glm::perspective(glm::radians(45.0f),
-                                               800.0f / 600.0f, 0.1f, 100.0f)};
+            .projection = glm::perspective(glm::radians(45.0f),
+                                           800.0f / 600.0f, 0.1f, 100.0f)};
         camera_id = entities.create(tr, cam);
     }
 
-    void update(render::Transform::Storage &transforms,
-                input::Input &input) {
-        render::Transform &transform = transforms[camera_id];
+    void update_camera_rot(const input::Input &input,
+                           render::Transform &transform) {
+        static constexpr float sensitivity = 0.3f;
 
-        glm::vec3 forward = glm::rotate(glm::inverse(transform.rotation), glm::vec3(0.0f, 0.0f, -1.0f));
-        glm::vec3 right = glm::rotate(glm::inverse(transform.rotation), glm::vec3(1.0f, 0.0f, 0.0f));
-        glm::vec3 up = glm::rotate(glm::inverse(transform.rotation), glm::vec3(0.0f, 1.0f, 0.0f));
+        glm::vec2 mouse_delta = input.get_mouse_pos_delta();
 
-        if (input.is_key_down(input::KEY_W))
-            transform.position += forward * 0.01f;
-        if (input.is_key_down(input::KEY_S))
-            transform.position -= forward * 0.01f;
-        if (input.is_key_down(input::KEY_A))
-            transform.position -= right * 0.01f;
-        if (input.is_key_down(input::KEY_D))
-            transform.position += right * 0.01f;
-        if (input.is_key_down(input::KEY_SPACE))
-            transform.position += up * 0.01f;
-        if (input.is_key_down(input::KEY_LEFT_SHIFT))
-            transform.position -= up * 0.01f;
+        yaw -= mouse_delta.x * sensitivity;
+        pitch -= mouse_delta.y * sensitivity;
+
+        if (pitch > 89.0f)
+            pitch = 89.0f;
+        if (pitch < -89.0f)
+            pitch = -89.0f;
+
+        transform.rotation = glm::quat(glm::vec3(glm::radians(pitch), glm::radians(yaw), 0.0f));
     }
 
-private:
-    ecs::Id camera_id;
+    void update_camera_pos(const input::Input &input,
+                           render::Transform &transform,
+                           float delta_time) {
+        static constexpr float speed = 3.0f;
+
+        glm::vec3 forward = glm::rotate(transform.rotation, glm::vec3(0.0f, 0.0f, -1.0f));
+        glm::vec3 right = glm::rotate(transform.rotation, glm::vec3(1.0f, 0.0f, 0.0f));
+        glm::vec3 up = glm::rotate(transform.rotation, glm::vec3(0.0f, 1.0f, 0.0f));
+
+        if (input.is_key_down(input::KEY_W))
+            transform.position += forward * delta_time * speed;
+        if (input.is_key_down(input::KEY_S))
+            transform.position -= forward * delta_time * speed;
+        if (input.is_key_down(input::KEY_A))
+            transform.position -= right * delta_time * speed;
+        if (input.is_key_down(input::KEY_D))
+            transform.position += right * delta_time * speed;
+        if (input.is_key_down(input::KEY_SPACE))
+            transform.position += up * delta_time * speed;
+        if (input.is_key_down(input::KEY_LEFT_SHIFT))
+            transform.position -= up * delta_time * speed;
+    }
+
+    float yaw = 0.0f;
+    float pitch = 0.0f;
 };
 
 int main() {

@@ -5,6 +5,7 @@
 #include "ecs/entities.h"
 #include "ecs/utils.h"
 #include "ecs/game_loop_control.h"
+#include "ecs/delta_time.h"
 
 #include <tuple>
 #include <variant>
@@ -95,6 +96,7 @@ namespace ecs {
         explicit Dispatcher() : world(std::make_unique<World>()) {
             world->emplace<Entities>(world.get());
             world->emplace<GameLoopControl>();
+            world->emplace<DeltaTime>();
         };
 
         Dispatcher(Dispatcher &&) = default;
@@ -129,8 +131,11 @@ namespace ecs {
 
         void loop() {
             auto &game_loop_control = world->get<GameLoopControl>();
-            while (!game_loop_control.stopped())
+            auto &delta_time = world->get<DeltaTime>();
+            while (!game_loop_control.stopped()) {
+                delta_time.update();
                 update();
+            }
         }
 
         template<System S>

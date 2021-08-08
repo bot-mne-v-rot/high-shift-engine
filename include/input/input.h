@@ -3,6 +3,8 @@
 
 #include "input/key_code.h"
 
+#include <glm/glm.hpp>
+
 namespace input {
     class InputSystem;
 
@@ -20,7 +22,7 @@ namespace input {
          * Tracks if button was pressed.
          * @return true if button is down but was up on the previous frame.
          */
-        bool on_key_down(KeyCode key) {
+        bool on_key_down(KeyCode key) const {
             return keys_pressed_state[key];
         }
 
@@ -28,7 +30,7 @@ namespace input {
          * Tracks button was released.
          * @return true if button is up but was down on the previous frame.
          */
-        bool on_key_up(KeyCode key) {
+        bool on_key_up(KeyCode key) const {
             return keys_released_state[key];
         }
 
@@ -36,8 +38,22 @@ namespace input {
          * Tracks button is held.
          * @return true if button is down.
          */
-        bool is_key_down(KeyCode key) {
+        bool is_key_down(KeyCode key) const {
             return keys_state[key];
+        }
+
+        /**
+         * @return Current mouse position.
+         */
+        glm::vec2 get_mouse_pos() const {
+            return mouse_pos;
+        }
+
+        /**
+         * @return Mouse transition between frames.
+         */
+        glm::vec2 get_mouse_pos_delta() const {
+            return mouse_pos_delta;
         }
 
     private:
@@ -61,9 +77,22 @@ namespace input {
             }
         }
 
+        void set_mouse_pos(glm::vec2 new_mouse_pos) {
+            if (first_mouse_update)
+                first_mouse_update = false;
+            else
+                mouse_pos_delta = new_mouse_pos - mouse_pos;
+
+            mouse_pos = new_mouse_pos;
+        }
+
         bool keys_state[keys_num] = {};
         bool keys_pressed_state[keys_num] = {};
         bool keys_released_state[keys_num] = {};
+
+        glm::vec2 mouse_pos;
+        glm::vec2 mouse_pos_delta;
+        bool first_mouse_update = true;
     };
 }
 

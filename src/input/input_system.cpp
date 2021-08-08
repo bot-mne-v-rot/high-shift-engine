@@ -134,14 +134,10 @@ namespace input {
     std::vector<KeyEvent> key_events;
 
     static void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods) {
-        if (action == GLFW_PRESS) {
+        if (action == GLFW_PRESS)
             key_events.push_back({.key = key_map[key], .type = KeyEvent::Type::press});
-            std::cout << key << " pressed" << std::endl;
-
-        } else if (action == GLFW_RELEASE) {
+        else if (action == GLFW_RELEASE)
             key_events.push_back({.key = key_map[key], .type = KeyEvent::Type::release});
-            std::cout << key << " released" << std::endl;
-        }
     }
 
     class InputSystem::Impl {
@@ -153,14 +149,34 @@ namespace input {
         }
 
         void update(Input &input) {
+            update_keyboard(input);
+            update_mouse(input);
+        }
+
+        void disable_cursor() {
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        }
+
+        void enable_cursor() {
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        }
+
+    private:
+        void update_keyboard(Input &input) {
             input.clear_transitions();
             for (KeyEvent event : key_events)
                 input.process_key_event(event);
             key_events.clear();
         }
 
-    private:
+        void update_mouse(Input &input) {
+            double xpos, ypos;
+            glfwGetCursorPos(window, &xpos, &ypos);
+            input.set_mouse_pos(glm::vec2(xpos, ypos));
+        }
+
         GLFWwindow *window = nullptr;
+        bool fps_mouse = false;
     };
 
     InputSystem::InputSystem() {
@@ -177,5 +193,13 @@ namespace input {
 
     void InputSystem::update(Input &input) {
         impl->update(input);
+    }
+
+    void InputSystem::disable_cursor() {
+        impl->disable_cursor();
+    }
+
+    void InputSystem::enable_cursor() {
+        impl->enable_cursor();
     }
 }

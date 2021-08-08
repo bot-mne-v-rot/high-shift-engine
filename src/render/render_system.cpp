@@ -77,7 +77,7 @@ namespace render {
 
                 glm::mat4 view = glm::mat4(1.0f);
                 view = glm::translate(view, -cam_transform.position);
-                view *= glm::toMat4(cam_transform.rotation);
+                view = glm::toMat4(glm::inverse(cam_transform.rotation)) * view;
 
                 ecs::joined_foreach(transforms, renderers, [&](const Transform &ent_transform,
                                                                const MeshRenderer &renderer) {

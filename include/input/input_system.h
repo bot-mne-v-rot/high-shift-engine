@@ -14,6 +14,9 @@ namespace input {
         void setup(ecs::World &world, const render::WindowSystem &window_system);
         void update(Input &input);
 
+        void disable_cursor();
+        void enable_cursor();
+
     private:
         class Impl;
 

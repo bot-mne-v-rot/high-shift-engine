@@ -7,6 +7,9 @@ set(${CMAKE_CXX_FLAGS} "${CMAKE_CXX_FLAGS} -fno-exceptions")
 set(LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib")
 set(UNIVERSAL_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib")
 
+SET(CMAKE_C_ARCHIVE_FINISH   "<CMAKE_RANLIB> -no_warning_for_no_symbols -c <TARGET>")
+SET(CMAKE_CXX_ARCHIVE_FINISH "<CMAKE_RANLIB> -no_warning_for_no_symbols -c <TARGET>")
+
 # Target
 set(TEST_TARGET tests)
 
@@ -26,11 +29,12 @@ file(GLOB_RECURSE ENGINE_ECS_SOURCES
         "${PROJECT_SOURCE_DIR}/src/ecs/*.h"
         "${PROJECT_SOURCE_DIR}/src/ecs/*.cpp")
 
-set(ENGINE_SOURCES ${ENGINE_RENDER_SOURCES} ${ENGINE_INPUT_SOURCES} ${ENGINE_ECS_SOURCES})
+set(ENGINE_SOURCES ${ENGINE_ECS_SOURCES} ${ENGINE_RENDER_SOURCES} ${ENGINE_INPUT_SOURCES} )
 
 include_directories(include)
-add_executable(${PROJECT_NAME} src/main.cpp ${ENGINE_SOURCES})
-add_executable(${TEST_TARGET} ${TEST_SOURCES})
+add_library(${PROJECT_NAME} STATIC ${ENGINE_SOURCES})
+add_executable(${TEST_TARGET} ${TEST_SOURCES} ${ENGINE_SOURCES})
+target_link_libraries(${TEST_TARGET} ${PROJECT_NAME})
 
 # GLFW
 set(GLFW_DIR "${LIB_DIR}/glfw")
@@ -69,8 +73,20 @@ target_link_libraries(${TEST_TARGET} "stb_image")
 
 # GLM
 set(GLM_DIR "${LIB_DIR}/glm")
-target_include_directories(${PROJECT_NAME} PRIVATE "${GLM_DIR}/include")
-target_include_directories(${TEST_TARGET} PRIVATE "${GLM_DIR}/include")
+include_directories("${GLM_DIR}/include")
+
+# Assimp
+set(ASSIMP_DIR "${UNIVERSAL_LIB_DIR}/assimp")
+
+add_subdirectory(${ASSIMP_DIR} assimp_build EXCLUDE_FROM_ALL)
+
+set(ASSIMP_BUILD_STATIC_LIB  ON CACHE BOOL "" FORCE)
+set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_ASSIMP_TOOLS OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+
+target_link_libraries(${PROJECT_NAME} "assimp")
+target_link_libraries(${TEST_TARGET} "assimp")
 
 # Other libs
 include_directories("${LIB_DIR}/other")

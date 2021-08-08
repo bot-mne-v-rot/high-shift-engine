@@ -2,7 +2,6 @@
 #include "render/render_system.h"
 #include "vector"
 #include "glm/vec3.hpp"
-#include "texture.h"
 #include "iostream"
 #include "common/handle_manager.h"
 

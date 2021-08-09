@@ -14,19 +14,14 @@ file(GLOB_RECURSE TEST_SOURCES
         "${PROJECT_SOURCE_DIR}/test/*.h"
         "${PROJECT_SOURCE_DIR}/test/*.cpp")
 
-file(GLOB_RECURSE ENGINE_RENDER_SOURCES
-        "${PROJECT_SOURCE_DIR}/src/render/*.h"
-        "${PROJECT_SOURCE_DIR}/src/render/*.cpp")
-
-file(GLOB_RECURSE ENGINE_INPUT_SOURCES
-        "${PROJECT_SOURCE_DIR}/src/input/*.h"
-        "${PROJECT_SOURCE_DIR}/src/input/*.cpp")
-
-set(ENGINE_SOURCES ${ENGINE_RENDER_SOURCES} ${ENGINE_INPUT_SOURCES})
+file(GLOB_RECURSE ENGINE_SOURCES
+        "${PROJECT_SOURCE_DIR}/src/*.h"
+        "${PROJECT_SOURCE_DIR}/src/*.cpp")
 
 include_directories(include)
-add_executable(${PROJECT_NAME} src/main.cpp ${ENGINE_SOURCES})
-add_executable(${TEST_TARGET} ${SOURCES} ${TEST_SOURCES})
+add_library(${PROJECT_NAME} STATIC ${ENGINE_SOURCES})
+add_executable(${TEST_TARGET} ${TEST_SOURCES})
+target_link_libraries(${TEST_TARGET} ${PROJECT_NAME})
 
 # GLFW
 set(GLFW_DIR "${LIB_DIR}/glfw")
@@ -39,9 +34,6 @@ add_subdirectory("${GLFW_DIR}")
 target_link_libraries(${PROJECT_NAME} "glfw" "${GLFW_LIBRARIES}")
 target_include_directories(${PROJECT_NAME} PRIVATE "${GLFW_DIR}/include")
 
-target_link_libraries(${TEST_TARGET} "glfw" "${GLFW_LIBRARIES}")
-target_include_directories(${TEST_TARGET} PRIVATE "${GLFW_DIR}/include")
-
 # GLAD
 set(GLAD_DIR "${LIB_DIR}/glad")
 add_library("glad" "${GLAD_DIR}/src/glad.c")
@@ -50,9 +42,6 @@ target_include_directories("glad" PRIVATE "${GLAD_DIR}/include")
 target_include_directories(${PROJECT_NAME} PRIVATE "${GLAD_DIR}/include")
 target_link_libraries(${PROJECT_NAME} "glad" "${CMAKE_DL_LIBS}")
 
-target_include_directories(${TEST_TARGET} PRIVATE "${GLAD_DIR}/include")
-target_link_libraries(${TEST_TARGET} "glad" "${CMAKE_DL_LIBS}")
-
 # STB_IMAGE
 set(STB_DIR "${LIB_DIR}/stb_image")
 add_subdirectory(${STB_DIR})
@@ -60,13 +49,21 @@ add_subdirectory(${STB_DIR})
 target_include_directories(${PROJECT_NAME} PRIVATE "${STB_DIR}/include")
 target_link_libraries(${PROJECT_NAME} "stb_image")
 
-target_include_directories(${TEST_TARGET} PRIVATE "${STB_DIR}/include")
-target_link_libraries(${TEST_TARGET} "stb_image")
-
 # GLM
 set(GLM_DIR "${LIB_DIR}/glm")
-target_include_directories(${PROJECT_NAME} PRIVATE "${GLM_DIR}/include")
-target_include_directories(${TEST_TARGET} PRIVATE "${GLM_DIR}/include")
+include_directories("${GLM_DIR}/include")
+
+# Assimp
+set(ASSIMP_DIR "${UNIVERSAL_LIB_DIR}/assimp")
+
+add_subdirectory(${ASSIMP_DIR} assimp_build EXCLUDE_FROM_ALL)
+
+set(ASSIMP_BUILD_STATIC_LIB  ON CACHE BOOL "" FORCE)
+set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_ASSIMP_TOOLS OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+
+target_link_libraries(${PROJECT_NAME} "assimp")
 
 # Other libs
 include_directories("${LIB_DIR}/other")

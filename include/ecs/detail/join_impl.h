@@ -117,7 +117,7 @@ namespace ecs {
     }
 
     template<typename ...Storages, typename Fn>
-    requires(Storage <std::remove_const_t<Storages>> &&...)
+    requires(Storage<std::remove_const_t<Storages>> &&...)
     inline void joined_foreach_impl(Storages &...storages, Fn &&f) {
         auto joined_mask = (storages.present() & ...);
         ecs::foreach(joined_mask, [&](Id id) {
@@ -126,7 +126,7 @@ namespace ecs {
     }
 
     template<typename ...Storages, typename Fn>
-    requires(Storage <std::remove_const_t<Storages>> &&...)
+    requires(Storage<std::remove_const_t<Storages>> &&...)
     inline void joined_foreach_with_id_impl(Storages &...storages, Fn &&f) {
         auto joined_mask = (storages.present() & ...);
         ecs::foreach(joined_mask, [&](Id id) {

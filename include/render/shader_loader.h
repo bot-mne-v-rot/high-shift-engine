@@ -4,12 +4,9 @@
 #include "expected.h"
 #include "filesystem"
 #include "common/handle_manager.h"
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
 #include "render/shader.h"
 
 namespace fs = std::filesystem;
-
 
 namespace render {
 

@@ -51,7 +51,7 @@ namespace render {
 
         tl::expected<Handle<Model>, std::string> load_model(const fs::path &path) {
             Assimp::Importer import;
-            const aiScene *scene = import.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs);
+            const aiScene *scene = import.ReadFile(path, aiProcess_Triangulate);
 
             if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
                 return tl::make_unexpected(import.GetErrorString());

@@ -59,10 +59,15 @@ namespace render {
 
     private:
         static tl::expected<void, std::string> load_texture_stbi(const fs::path &path) {
-            int width, height, nrChannels;
-            uint8_t *data = stbi_load(path.c_str(), &width, &height, &nrChannels, 0);
+            int width, height, nr_channels;
+            uint8_t *data = stbi_load(path.c_str(), &width, &height, &nr_channels, 0);
+
             if (data) {
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_COMPRESSED_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+                // nr_channels can be from 1 to 4
+                constexpr int pixel_format_mapping[] = {-1, GL_RED, GL_RG, GL_RGB, GL_RGBA};
+                int pixel_data_format = pixel_data_format[nr_channels];
+
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_COMPRESSED_RGB, width, height, 0, pixel_data_format, GL_UNSIGNED_BYTE, data);
                 glGenerateMipmap(GL_TEXTURE_2D);
             } else {
                 return tl::make_unexpected<std::string>("Failed to load image from path " + path.string());

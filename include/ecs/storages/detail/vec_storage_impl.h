@@ -36,15 +36,17 @@ namespace ecs {
             return *this;
 
         reserve(other.capacity());
-        for (ecs::Id id : other.mask)
+        foreach(other.mask, [&, this](Id id) {
             if (mask.contains(id))
                 data[id] = other.data[id];
             else
                 new(data + id) T(other.data[id]);
+        });
 
-        for (ecs::Id id : mask)
+        foreach(mask, [&, this](Id id) {
             if (!other.mask.contains(id))
                 std::destroy_at(data + id);
+        });
 
         mask = other.mask;
 
@@ -109,8 +111,9 @@ namespace ecs {
 
     template<typename T>
     void VecStorage<T>::clear() {
-        for (ecs::Id id : mask)
+        foreach(mask, [this](Id id) {
             std::destroy_at(data + id);
+        });
         mask.clear();
         sz = 0;
     }
@@ -122,10 +125,10 @@ namespace ecs {
 
         T *new_data = static_cast<T *>(operator new(n * sizeof(T)));
 
-        for (ecs::Id id : mask) {
+        foreach(mask, [&, this](Id id) {
             new(new_data + id) T(std::move(data[id]));
             std::destroy_at(data + id);
-        }
+        });
 
         operator delete(data);
 
@@ -143,8 +146,9 @@ namespace ecs {
 
     template<typename T>
     VecStorage<T>::~VecStorage() noexcept {
-        for (ecs::Id id : mask)
+        foreach(mask, [this](Id id) {
             std::destroy_at(data + id);
+        });
         operator delete(data);
         sz = 0, cp = 0;
         data = nullptr;

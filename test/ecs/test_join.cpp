@@ -34,10 +34,10 @@ TEST_SUITE("ecs/join") {
 
         const SomeComponent::Storage &a = storage_a;
         OtherComponent::Storage &b = storage_b;
-        for (auto[some, other] : ecs::join(a, b)) {
+        ecs::joined_foreach(a, b, [&](auto &some, auto &other) {
             static_assert(std::is_same_v<decltype(some), const SomeComponent &>);
             static_assert(std::is_same_v<decltype(other), OtherComponent &>);
-        }
+        });
     }
 
     TEST_CASE("basic") {
@@ -58,36 +58,23 @@ TEST_SUITE("ecs/join") {
         const SomeComponent::Storage &a = storage_a;
         OtherComponent::Storage &b = storage_b;
 
-        SUBCASE("iterator") {
-            SUBCASE("without id") {
-                for (auto[some, other] : ecs::join(a, b)) {
-                    CHECK(some.i == ids_c[i]);
-                    CHECK(other.i == ids_c[i]);
-                    ++i;
-                }
-                CHECK(i == ids_n);
-            }
-
-            SUBCASE("with id") {
-                for (auto[id, some, other] : ecs::join_with_id(a, b)) {
-                    CHECK(some.i == ids_c[i]);
-                    CHECK(other.i == ids_c[i]);
-                    CHECK(id == ids_c[i]);
-                    ++i;
-                }
-                CHECK(i == ids_n);
-            }
+        SUBCASE("without id") {
+            ecs::joined_foreach(a, b, [&](auto &some, auto &other) {
+                CHECK(some.i == ids_c[i]);
+                CHECK(other.i == ids_c[i]);
+                ++i;
+            });
+            CHECK(i == ids_n);
         }
 
-        SUBCASE("foreach") {
-            SUBCASE("without id") {
-                ecs::joined_foreach(a, b, [&](auto &some, auto &other) {
-                    CHECK(some.i == ids_c[i]);
-                    CHECK(other.i == ids_c[i]);
-                    ++i;
-                });
-                CHECK(i == ids_n);
-            }
+        SUBCASE("with id") {
+            ecs::joined_foreach_with_id(a, b, [&](ecs::Id id, auto &some, auto &other) {
+                CHECK(some.i == ids_c[i]);
+                CHECK(other.i == ids_c[i]);
+                CHECK(id == ids_c[i]);
+                ++i;
+            });
+            CHECK(i == ids_n);
         }
     }
 

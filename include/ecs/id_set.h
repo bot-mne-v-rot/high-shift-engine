@@ -12,7 +12,7 @@ namespace ecs {
     template<class S>
     concept IdSetLike = requires(const S c, std::size_t lvl, std::size_t ind, Id id) {
         { c.contains(id) } -> std::same_as<bool>;
-        { c.capacity() } -> std::same_as<typename S::size_type>;
+        { c.capacity() } -> std::same_as<std::size_t>;
         { c.level_data(lvl, ind) } -> std::same_as<uint64_t>;
         { c.level_capacity(lvl) } -> std::same_as<std::size_t>;
         { c.first() } -> std::same_as<Id>;
@@ -31,12 +31,6 @@ namespace ecs {
      */
     class IdSet {
     public:
-        using value_type = Id;
-        using reference = Id &;
-        using const_reference = Id;
-        using difference_type = std::ptrdiff_t;
-        using size_type = std::size_t;
-
         IdSet();
 
         IdSet(const IdSet &);
@@ -45,13 +39,8 @@ namespace ecs {
         IdSet(IdSet &&);
         IdSet &operator=(IdSet &&);
 
-        class const_iterator;
-
-        using iterator = const_iterator;
-
         void insert(Id id);
         bool erase(Id id); // true if element was present
-        iterator erase(const_iterator it);
         bool contains(Id id) const;
 
         std::size_t size() const;
@@ -67,11 +56,6 @@ namespace ecs {
         void swap(IdSet &other);
 
         ~IdSet();
-
-        const_iterator begin() const;
-        const_iterator end() const;
-        const_iterator cbegin() const;
-        const_iterator cend() const;
 
         uint64_t level_data(std::size_t lvl, std::size_t ind) const;
         std::size_t level_capacity(std::size_t lvl) const;
@@ -97,64 +81,6 @@ namespace ecs {
     static_assert(IdSetLike<IdSet>);
 
     /**
-     * Iterator that can traverse inserted ids in an arbitrary
-     * [IdSetLike] structure.
-     *
-     * @note The iterator takes pointer to a structure and
-     * thus invalidated if the structure is relocated.
-     *
-     * @note Iterator invalidation also happens when
-     * IdSet's memory is reallocated. Therefore its not
-     * recommended to store the iterators while some
-     * other code can modify it.
-     */
-    template<IdSetLike S>
-    class IdSetIterator {
-    public:
-        using reference = Id;
-        using pointer = const Id *;
-        using value_type = Id;
-        using difference_type = std::ptrdiff_t;
-        using iterator_category = std::forward_iterator_tag;
-
-        IdSetIterator() = default;
-        IdSetIterator(const IdSetIterator &) = default;
-        IdSetIterator &operator=(const IdSetIterator &) = default;
-
-        reference operator*() const;
-
-        IdSetIterator &operator++();
-        IdSetIterator operator++(int);
-
-        bool operator==(const IdSetIterator &other) const;
-        bool operator!=(const IdSetIterator &other) const;
-
-        explicit IdSetIterator(const S *set, Id pos) : set(set), pos(pos) {
-            if (pos == set->capacity())
-                return;
-            Id cur = pos;
-            for (std::size_t i = 0; i < IdSet::levels_num; ++i) {
-                uint32_t lower = (cur & IdSet::lower_bits);
-                cur >>= IdSet::shift;
-                uint64_t block = (cur < set->level_capacity(i) ? set->level_data(i, cur) : 0);
-                levels_data[i] = block & (~((1ull << lower) - 1));
-            }
-        }
-
-    private:
-        Id pos = 0;
-        const S *set = nullptr;
-        uint64_t levels_data[IdSet::levels_num]{};
-    };
-
-#define ecs_define_id_set_iterator(...) \
-    struct __VA_ARGS__::const_iterator : public IdSetIterator<__VA_ARGS__> { \
-        const_iterator(const __VA_ARGS__ *set, Id pos) : IdSetIterator<__VA_ARGS__>(set, pos) {} \
-    }
-
-    ecs_define_id_set_iterator(IdSet);
-
-    /**
      * Virtual Id Set that represents intersection
      * of two Id Sets (bitwise AND of the bitmasks).
      *
@@ -177,12 +103,6 @@ namespace ecs {
     template<IdSetLike A, IdSetLike B>
     class IdSetAnd {
     public:
-        using value_type = Id;
-        using reference = Id &;
-        using const_reference = Id;
-        using difference_type = std::ptrdiff_t;
-        using size_type = std::size_t;
-
         IdSetAnd(const A &a, const B &b) : a(a), b(b) {}
 
         bool contains(Id id) const;
@@ -193,23 +113,10 @@ namespace ecs {
 
         uint64_t level_data(std::size_t lvl, std::size_t ind) const;
         std::size_t level_capacity(std::size_t lvl) const;
-
-        class const_iterator;
-
-        using iterator = const_iterator;
-
-        const_iterator begin() const;
-        const_iterator end() const;
-        const_iterator cbegin() const;
-        const_iterator cend() const;
-
     private:
         const A &a;
         const B &b;
     };
-
-    template<IdSetLike A, IdSetLike B>
-    ecs_define_id_set_iterator(IdSetAnd<A, B>);
 
     template<IdSetLike A, IdSetLike B>
     inline IdSetAnd<A, B> operator&(const A &a, const B &b) {
@@ -225,12 +132,6 @@ namespace ecs {
     template<IdSetLike A, IdSetLike B>
     class IdSetOr {
     public:
-        using value_type = Id;
-        using reference = Id &;
-        using const_reference = Id;
-        using difference_type = std::ptrdiff_t;
-        using size_type = std::size_t;
-
         IdSetOr(const A &a, const B &b) : a(a), b(b) {}
 
         bool contains(Id id) const;
@@ -242,22 +143,10 @@ namespace ecs {
         uint64_t level_data(std::size_t lvl, std::size_t ind) const;
         std::size_t level_capacity(std::size_t lvl) const;
 
-        class const_iterator;
-
-        using iterator = const_iterator;
-
-        const_iterator begin() const;
-        const_iterator end() const;
-        const_iterator cbegin() const;
-        const_iterator cend() const;
-
     private:
         const A &a;
         const B &b;
     };
-
-    template<IdSetLike A, IdSetLike B>
-    ecs_define_id_set_iterator(IdSetOr<A, B>);
 
     template<IdSetLike A, IdSetLike B>
     inline IdSetOr<A, B> operator|(const A &a, const B &b) {
@@ -278,12 +167,6 @@ namespace ecs {
     template<IdSetLike S>
     class IdSetNot {
     public:
-        using value_type = Id;
-        using reference = Id &;
-        using const_reference = Id;
-        using difference_type = std::ptrdiff_t;
-        using size_type = std::size_t;
-
         explicit IdSetNot(const S &set) : set(set) {}
 
         bool contains(Id id) const;
@@ -295,21 +178,9 @@ namespace ecs {
         uint64_t level_data(std::size_t lvl, std::size_t ind) const;
         std::size_t level_capacity(std::size_t lvl) const;
 
-        class const_iterator;
-
-        using iterator = const_iterator;
-
-        const_iterator begin() const;
-        const_iterator end() const;
-        const_iterator cbegin() const;
-        const_iterator cend() const;
-
     private:
         const S &set;
     };
-
-    template<IdSetLike S>
-    ecs_define_id_set_iterator(IdSetNot<S>);
 
     template<IdSetLike S>
     inline IdSetNot<S> operator~(const S &set) {
@@ -325,12 +196,6 @@ namespace ecs {
      */
     class FullIdSet {
     public:
-        using value_type = Id;
-        using reference = Id &;
-        using const_reference = Id;
-        using difference_type = std::ptrdiff_t;
-        using size_type = std::size_t;
-
         bool contains(Id id) const;
         bool empty() const;
         Id first() const;
@@ -340,18 +205,7 @@ namespace ecs {
 
         uint64_t level_data(std::size_t lvl, std::size_t ind) const;
         std::size_t level_capacity(std::size_t lvl) const;
-
-        class const_iterator;
-
-        using iterator = const_iterator;
-
-        const_iterator begin() const;
-        const_iterator end() const;
-        const_iterator cbegin() const;
-        const_iterator cend() const;
     };
-
-    ecs_define_id_set_iterator(FullIdSet);
 
     static_assert(IdSetLike<FullIdSet>);
 
@@ -363,12 +217,6 @@ namespace ecs {
      */
     class EmptyIdSet {
     public:
-        using value_type = Id;
-        using reference = Id &;
-        using const_reference = Id;
-        using difference_type = std::ptrdiff_t;
-        using size_type = std::size_t;
-
         bool contains(Id id) const;
         bool empty() const;
         Id first() const;
@@ -378,18 +226,7 @@ namespace ecs {
 
         uint64_t level_data(std::size_t lvl, std::size_t ind) const;
         std::size_t level_capacity(std::size_t lvl) const;
-
-        class const_iterator;
-
-        using iterator = const_iterator;
-
-        const_iterator begin() const;
-        const_iterator end() const;
-        const_iterator cbegin() const;
-        const_iterator cend() const;
     };
-
-    ecs_define_id_set_iterator(EmptyIdSet);
 
     static_assert(IdSetLike<EmptyIdSet>);
 

@@ -35,8 +35,9 @@ TEST_SUITE("ecs/storages/InvertedStorage") {
 
         std::size_t i = 0;
         auto not_b = !b; // because ecs::join expects lvalues
-        for (auto[ca, _] : ecs::join(a, not_b))
+        ecs::joined_foreach(a, not_b, [&](auto &ca, auto &) {
             REQUIRE(ca.id == ids_c[i++]);
+        });
         CHECK(ids_n == i);
 
         for (auto id : ids_b)

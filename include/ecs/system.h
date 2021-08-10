@@ -1,7 +1,6 @@
 #ifndef HIGH_SHIFT_SYSTEM_H
 #define HIGH_SHIFT_SYSTEM_H
 
-#include "ecs/component.h"
 #include "ecs/world.h"
 #include "ecs/utils.h"
 

@@ -8,8 +8,6 @@
 #include <memory>
 #include <concepts>
 
-#include "ecs/storage.h"
-
 namespace ecs {
     namespace detail {
         inline uint32_t _get_resource_id() {
@@ -53,9 +51,6 @@ namespace ecs {
         void insert(std::unique_ptr<R> res) {
             static auto id = detail::get_resource_id<R>();
             presence.set(id);
-
-            if constexpr(MutStorage<R>)
-                _storages.emplace_back(*res, id);
             resources[id] = std::move(res);
         }
 
@@ -70,8 +65,6 @@ namespace ecs {
             presence.set(id);
 
             auto res = std::make_unique<R>(std::forward<Args>(args)...);
-            if constexpr(MutStorage<R>)
-                _storages.emplace_back(*res, id);
             resources[id] = std::move(res);
         }
 
@@ -87,11 +80,6 @@ namespace ecs {
 
             presence.reset(id);
             resources[id] = std::shared_ptr<R>();
-
-            if constexpr(MutStorage<R>)
-                _storages.erase(std::find_if(_storages.begin(), _storages.end(), [](auto &storage) {
-                    return storage.resource_id() == id;
-                }));
         }
 
         /**
@@ -128,12 +116,6 @@ namespace ecs {
             return presence[id];
         }
 
-        using StorageInterfaces = std::vector<MutStorageInterface>;
-
-        const StorageInterfaces &storages() const {
-            return _storages;
-        }
-
     private:
         static constexpr std::size_t max_resources = 1024;
         using ResourcesPresence = std::bitset<max_resources>;
@@ -141,7 +123,6 @@ namespace ecs {
 
         ResourcesPresence presence;
         ResourcesArray resources;
-        StorageInterfaces _storages;
     };
 }
 

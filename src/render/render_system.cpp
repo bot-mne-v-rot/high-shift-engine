@@ -19,6 +19,7 @@ namespace render {
         unsigned int specularNr = 0;
         for (unsigned int i = 0; i < mesh.textures.size(); i++) {
             glActiveTexture(GL_TEXTURE0 + i); // activate proper texture unit before binding
+            glBindTexture(GL_TEXTURE_2D, 0);
             Texture2d *tex = texture_loader.get_texture(mesh.textures[i]);
 
             // retrieve texture number (the N in diffuse_textureN)
@@ -26,12 +27,13 @@ namespace render {
             std::string name;
             switch (tex->type) {
                 case Texture2d::diffuse:
-                    name = "texture_diffuse";
+                    name = "material.diffuse";
                     number = std::to_string(diffuseNr++);
                     break;
                 case Texture2d::specular:
-                    name = "texture_specular";
+                    name = "material.specular";
                     number = std::to_string(specularNr++);
+
                     break;
                 default:
                     continue; // unsupported texture type
@@ -68,7 +70,10 @@ namespace render {
                     const ModelLoader &model_loader,
                     const MeshRenderer::Storage &renderers,
                     const Transform::Storage &transforms,
-                    const Camera::Storage &cameras) {
+                    const Camera::Storage &cameras,
+                    const DirLight::Storage &dir_lights,
+                    const PointLight::Storage &point_lights,
+                    const SpotLight::Storage &spot_lights) {
             glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -87,9 +92,42 @@ namespace render {
 
                     auto *shader_program = shader_loader.get_shader_program(renderer.shader_program_handle);
 
-                    glm::mat4 mapping = projection * view * local_to_world;
+
+
+
                     shader_program->use();
-                    shader_program->set_mat4("mapping", mapping);
+                    shader_program->set_mat4("projection", projection);
+                    shader_program->set_mat4("view", view);
+                    shader_program->set_mat4("model", local_to_world);
+                    shader_program->set_vec3("viewPos", cam_transform.position);
+
+                    int index = 0;
+                    ecs::foreach(dir_lights, [&] (const DirLight &dir_light) {
+                        shader_program->set_dir_light(index, dir_light);
+                        ++index;
+                    });
+                    shader_program->set_int("NrDirLights", index);
+
+                    index = 0;
+                    ecs::joined_foreach(transforms, point_lights, [&] (const Transform &light_transform,
+                            const PointLight &point_light) {
+                        shader_program->set_point_light(index, light_transform.position, point_light);
+                        ++index;
+                    });
+                    shader_program->set_int("NrPointLights", index);
+
+                    index = 0;
+                    ecs::joined_foreach(transforms, spot_lights, [&] (const Transform &light_transform,
+                            const SpotLight &spot_light) {
+                        shader_program->set_spot_light(index, light_transform.position, spot_light);
+                        ++index;
+                    });
+                    shader_program->set_int("NrSpotLights", index);
+
+                    shader_program->set_float("material.shininess", 64.0f);
+
+                    //glm::mat4 mapping = projection * view * local_to_world;
+                    //shader_program->set_mat4("mapping", mapping);
 
                     Model *model = model_loader.get_model(renderer.model_handle);
                     if (model)
@@ -130,8 +168,11 @@ namespace render {
                               const ModelLoader &model_loader,
                               const MeshRenderer::Storage &renderers,
                               const Transform::Storage &transforms,
-                              const Camera::Storage &cameras) {
-        impl->update(shader_loader, texture_loader, model_loader, renderers, transforms, cameras);
+                              const Camera::Storage &cameras,
+                              const DirLight::Storage &dir_lights,
+                              const PointLight::Storage &point_lights,
+                              const SpotLight::Storage &spot_lights) {
+        impl->update(shader_loader, texture_loader, model_loader, renderers, transforms, cameras, dir_lights, point_lights, spot_lights);
     }
 
     void RenderSystem::teardown(ecs::World &world) {

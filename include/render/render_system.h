@@ -10,6 +10,7 @@
 #include "render/shader.h"
 #include "render/texture_loader.h"
 #include "render/shader_loader.h"
+#include "render/lights.h"
 
 namespace render {
     struct Transform {
@@ -45,7 +46,11 @@ namespace render {
                     const ModelLoader &model_loader,
                     const MeshRenderer::Storage &renderers,
                     const Transform::Storage &transforms,
-                    const Camera::Storage &cameras);
+                    const Camera::Storage &cameras,
+                    const DirLight::Storage &dir_lights,
+                    const PointLight::Storage &point_lights,
+                    const SpotLight::Storage &spot_lights
+                    );
 
         void teardown(ecs::World &world);
 

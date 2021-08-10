@@ -100,10 +100,12 @@ namespace ecs {
      * Layer 0: 0000 0000 ...
      *
      */
-    template<IdSetLike A, IdSetLike B>
+    template<typename A, typename B>
+    requires IdSetLike<std::remove_cvref_t<A>> && IdSetLike<std::remove_cvref_t<B>>
     class IdSetAnd {
     public:
-        IdSetAnd(const A &a, const B &b) : a(a), b(b) {}
+        // Type deduction of the universal references is performed in the & operator
+        IdSetAnd(A &&a, B &&b) : a(std::forward<A>(a)), b(std::forward<B>(b)) {}
 
         bool contains(Id id) const;
         bool empty() const;
@@ -113,14 +115,16 @@ namespace ecs {
 
         uint64_t level_data(std::size_t lvl, std::size_t ind) const;
         std::size_t level_capacity(std::size_t lvl) const;
+
     private:
-        const A &a;
-        const B &b;
+        A a;
+        B b;
     };
 
-    template<IdSetLike A, IdSetLike B>
-    inline IdSetAnd<A, B> operator&(const A &a, const B &b) {
-        return IdSetAnd<A, B>(a, b);
+    template<typename A, typename B>
+    requires IdSetLike<std::remove_cvref_t<A>> && IdSetLike<std::remove_cvref_t<B>>
+    inline IdSetAnd<A, B> operator&(A &&a, B &&b) {
+        return IdSetAnd<A, B>(std::forward<A>(a), std::forward<B>(b));
     }
 
     /**
@@ -129,10 +133,12 @@ namespace ecs {
      *
      * @note It's effectively bitwise OR of each level.
      */
-    template<IdSetLike A, IdSetLike B>
+    template<typename A, typename B>
+    requires IdSetLike<std::remove_cvref_t<A>> && IdSetLike<std::remove_cvref_t<B>>
     class IdSetOr {
     public:
-        IdSetOr(const A &a, const B &b) : a(a), b(b) {}
+        // Type deduction of the universal references is performed in the | operator
+        IdSetOr(A &&a, B &&b) : a(std::forward<A>(a)), b(std::forward<B>(b)) {}
 
         bool contains(Id id) const;
         bool empty() const;
@@ -144,13 +150,14 @@ namespace ecs {
         std::size_t level_capacity(std::size_t lvl) const;
 
     private:
-        const A &a;
-        const B &b;
+        A a;
+        B b;
     };
 
-    template<IdSetLike A, IdSetLike B>
-    inline IdSetOr<A, B> operator|(const A &a, const B &b) {
-        return IdSetOr<A, B>(a, b);
+    template<typename A, typename B>
+    requires IdSetLike<std::remove_cvref_t<A>> && IdSetLike<std::remove_cvref_t<B>>
+    inline IdSetOr<A, B> operator|(A &&a, B &&b) {
+        return IdSetOr<A, B>(std::forward<A>(a), std::forward<B>(b));
     }
 
     /**
@@ -164,10 +171,12 @@ namespace ecs {
      * @note It's effectively bitwise NOT of the bottom level
      * while others are constant 1s.
      */
-    template<IdSetLike S>
+    template<typename S>
+    requires IdSetLike<std::remove_cvref_t<S>>
     class IdSetNot {
     public:
-        explicit IdSetNot(const S &set) : set(set) {}
+        // Type deduction of the universal reference is performed in the | operator
+        explicit IdSetNot(S &&set) : set(std::forward<S>(set)) {}
 
         bool contains(Id id) const;
         bool empty() const;
@@ -179,12 +188,13 @@ namespace ecs {
         std::size_t level_capacity(std::size_t lvl) const;
 
     private:
-        const S &set;
+        S set;
     };
 
-    template<IdSetLike S>
-    inline IdSetNot<S> operator~(const S &set) {
-        return IdSetNot<S>(set);
+    template<typename S>
+    requires IdSetLike<std::remove_cvref_t<S>>
+    inline IdSetNot<S> operator~(S &&set) {
+        return IdSetNot<S>(std::forward<S>(set));
     }
 
     /**

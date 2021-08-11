@@ -10,6 +10,19 @@ std::filesystem::path cube_fragment_path = std::filesystem::current_path() / "sh
 std::filesystem::path light_vertex_path = std::filesystem::current_path() / "shaders" / "lighting.vert";
 std::filesystem::path light_fragment_path = std::filesystem::current_path() / "shaders" / "lighting.frag";
 
+
+render::SpotLight flashlight {
+    .direction = {0.f, 0.f, 0.f},
+    .cutOff = glm::cos(glm::radians(12.5f)),
+    .outerCutOff = glm::cos(glm::radians(15.0f)),
+    .constant = 1.0f,
+    .linear = 0.09f,
+    .quadratic = 0.032f,
+    .ambient = {0.0f, 0.0f, 0.0f},
+    .diffuse = {1.0f, 1.0f, 1.0f},
+    .specular = {1.0f, 1.0f, 1.0f}
+};
+
 class MainCameraSystem {
 public:
     void setup(ecs::World &world,
@@ -21,9 +34,14 @@ public:
     void update(render::Transform::Storage &transforms,
                 const input::Input &input,
                 ecs::GameLoopControl &game_loop,
-                const ecs::DeltaTime &delta_time) {
-        render::Transform &transform = transforms[camera_id];
+                const ecs::DeltaTime &delta_time,
+                render::SpotLight::Storage &spotlights) {
 
+        ecs::joined_foreach(transforms, spotlights, [&](render::Transform &light_transform, render::SpotLight &spotlight) {
+            spotlight.direction = glm::rotate(light_transform.rotation, glm::vec3(0.0f, 0.0f, -1.0f));
+        });
+
+        render::Transform &transform = transforms[camera_id];
         if (input.on_key_down(input::KEY_ESCAPE))
             game_loop.stop();
 
@@ -41,7 +59,7 @@ private:
         auto cam = render::Camera{
             .projection = glm::perspective(glm::radians(45.0f),
                                            800.0f / 600.0f, 0.1f, 100.0f)};
-        camera_id = entities.create(tr, cam);
+        camera_id = entities.create(tr, cam, flashlight);
     }
 
     void update_camera_rot(const input::Input &input,
@@ -111,6 +129,8 @@ render::PointLight govno_lampa {
     .diffuse = {0.6f, 0.6f, 0.6f},
     .specular = {0.8f, 0.8f, 0.8f},
 };
+
+
 
 
 int main() {

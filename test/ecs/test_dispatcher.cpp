@@ -114,7 +114,7 @@ namespace {
     static_assert(ecs::SystemHasSetup<FailingSystem>);
 }
 
-TEST_SUITE("dispatcher") {
+TEST_SUITE("ecs/dispatcher") {
     TEST_CASE("init resources") {
         auto dispatcher_result = ecs::Dispatcher::create<SomeSystem, OtherSystem>();
         REQUIRE(dispatcher_result);

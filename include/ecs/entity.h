@@ -8,6 +8,10 @@ namespace ecs {
     struct Entity {
         Id id;
     };
+
+    class EntityArchetype {
+
+    };
 }
 
 #endif //HIGH_SHIFT_ENTITY_H

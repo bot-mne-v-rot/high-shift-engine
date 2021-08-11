@@ -6,7 +6,7 @@
 #include <cstdint>
 #include <cstddef>
 #include <concepts>
-#include <iterator>
+#include <vector>
 
 namespace ecs {
     template<class S>
@@ -128,6 +128,30 @@ namespace ecs {
     }
 
     /**
+     * Virtual Id Set that represents intersection
+     * of two Id Sets (bitwise AND of the bitmasks).
+     *
+     * Unlike IdSetAnd its' type is not modified
+     * by &'ed sets.
+     */
+    class DynamicIdSetAnd {
+    public:
+        explicit DynamicIdSetAnd(std::vector<const IdSet *> sets) : sets(std::move(sets)) {}
+
+        bool contains(Id id) const;
+        bool empty() const;
+        Id first() const;
+
+        std::size_t capacity() const;
+
+        uint64_t level_data(std::size_t lvl, std::size_t ind) const;
+        std::size_t level_capacity(std::size_t lvl) const;
+
+    private:
+        std::vector<const IdSet *> sets;
+    };
+
+    /**
      * Virtual Id Set that represents union
      * of two Id Sets (bitwise OR of the bitmasks).
      *
@@ -240,8 +264,19 @@ namespace ecs {
 
     static_assert(IdSetLike<EmptyIdSet>);
 
+    /**
+     * Iterates over set and calls f with each id.
+     */
     template<IdSetLike Set, typename Fn>
     void foreach(const Set &set, Fn &&f);
+
+    /**
+     * @param f predicate.
+     * @return the first matched id if any.
+     * @return IdSet::max_size, otherwise.
+     */
+    template<IdSetLike Set, typename Fn>
+    Id find_if(const Set &set, Fn &&f);
 }
 
 namespace std {

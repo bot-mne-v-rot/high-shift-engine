@@ -166,4 +166,61 @@ namespace ecs {
         // return entity id
         return entities[last_entity_pos.index_in_chunk];
     }
+
+    auto ArchetypesStorage::find(const std::vector<ComponentType> &components)
+    -> Storage::iterator {
+        DynamicIdSetAnd sets_and = query_mask(components);
+
+        Id id = find_if(sets_and, [&](Id id) {
+            return storage[id]->components_count() == components.size();
+        });
+
+        if (id != IdSet::max_size)
+            return storage.begin() + id;
+        else
+            return storage.end();
+    }
+
+    DynamicIdSetAnd ArchetypesStorage::query_mask(const std::vector<ComponentType> &components) const {
+        std::vector<const IdSet *> sets;
+        sets.reserve(components.size());
+        for (auto &type : components)
+            sets.push_back(&component_masks[type.id]);
+
+        return DynamicIdSetAnd(std::move(sets));
+    }
+
+    Archetype *ArchetypesStorage::get_or_insert(const std::vector<ComponentType> &components) {
+        auto it = find(components);
+
+        if (it == storage.end()) {
+            for (auto &type : components)
+                component_masks[type.id].insert(storage.size());
+            storage.push_back(std::make_unique<Archetype>(components, _mapping.get()));
+            return storage.back().get();
+        } else {
+            return it->get();
+        }
+    }
+
+    void ArchetypesStorage::erase(Archetype *archetype) {
+        auto it = find(archetype->component_types());
+
+        if (it != storage.end()) {
+            std::size_t found = it - storage.begin();
+            std::size_t last = storage.size() - 1;
+
+            for (auto &type : archetype->component_types())
+                component_masks[type.id].erase(found);
+
+            for (auto &type : storage[last]->component_types())
+                component_masks[type.id].erase(last);
+            for (auto &type : storage[last]->component_types())
+                component_masks[type.id].insert(found);
+
+            std::swap(*it, storage[last]);
+
+            storage.pop_back();
+        }
+    }
 }

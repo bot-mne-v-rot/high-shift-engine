@@ -202,11 +202,11 @@ TEST_SUITE("ecs/Archetype") {
 
             ecs::Chunk *chunks = archetype.chunks();
             std::size_t chunks_count = archetype.chunks_count();
-
             CHECK(pos.archetype == &archetype);
             CHECK(pos.chunk_index == 0);
             CHECK(pos.index_in_chunk == 0);
             CHECK(chunks_count == 1);
+            CHECK(archetype.entities_count() == 1);
             CHECK(archetype.last_chunk_free_slots() == archetype.chunk_capacity() - 1);
 
             void *id_ptr =
@@ -215,6 +215,88 @@ TEST_SUITE("ecs/Archetype") {
 
             CHECK(*reinterpret_cast<ecs::Id *>(id_ptr) == id);
             CHECK(archetype.get_entity_id(pos) == id);
+        }
+    }
+}
+
+TEST_SUITE("ecs/ArchetypesStorage") {
+    TEST_CASE("get_or_insert") {
+        ecs::ArchetypesStorage archetypes;
+        CHECK(archetypes.entities_mapping());
+
+        std::vector<ecs::ComponentType> components{
+            ecs::ComponentType::create<Position>(),
+            ecs::ComponentType::create<CacheLineAligned1>(),
+            ecs::ComponentType::create<CacheLineAligned2>(),
+            ecs::ComponentType::create<SomeComponent>()
+        };
+
+        CHECK(archetypes.size() == 0);
+
+        ecs::Archetype *arch = archetypes.get_or_insert(components);
+        SUBCASE("insert") {
+            CHECK(arch->component_types() == components);
+            CHECK(archetypes.size() == 1);
+            REQUIRE(arch);
+        }
+
+        SUBCASE("get") {
+            ecs::Archetype *same_arch = archetypes.get_or_insert(components);
+            CHECK(archetypes.size() == 1);
+            CHECK(arch == same_arch);
+        }
+
+        std::vector<ecs::ComponentType> components2{
+            ecs::ComponentType::create<Position>()
+        };
+
+        ecs::Archetype *arch2 = archetypes.get_or_insert(components2);
+        SUBCASE("insert 2") {
+            CHECK(arch2->component_types() == components2);
+            CHECK(arch2 != arch);
+            CHECK(archetypes.size() == 2);
+        }
+
+        SUBCASE("get 2") {
+            ecs::Archetype *same_arch2 = archetypes.get_or_insert(components2);
+            CHECK(archetypes.size() == 2);
+            CHECK(arch2 == same_arch2);
+        }
+    }
+
+    TEST_CASE("erase") {
+        ecs::ArchetypesStorage archetypes;
+
+        std::vector<ecs::ComponentType> components1{
+            ecs::ComponentType::create<Position>(),
+            ecs::ComponentType::create<CacheLineAligned1>(),
+            ecs::ComponentType::create<CacheLineAligned2>(),
+            ecs::ComponentType::create<SomeComponent>()
+        };
+
+        std::vector<ecs::ComponentType> components2{
+            ecs::ComponentType::create<Position>(),
+            ecs::ComponentType::create<SomeComponent>()
+        };
+
+        ecs::Archetype *arch1 = archetypes.get_or_insert(components1);
+        ecs::Archetype *arch2 = archetypes.get_or_insert(components2);
+
+        archetypes.erase(arch1);
+
+        SUBCASE("erased") {
+            CHECK(archetypes.size() == 1);
+        }
+
+        SUBCASE("other is accessible") {
+            ecs::Archetype *arch = archetypes.get_or_insert(components2);
+            CHECK(archetypes.size() == 1);
+            CHECK(arch == arch2);
+        }
+
+        SUBCASE("create again") {
+            ecs::Archetype *arch = archetypes.get_or_insert(components1);
+            CHECK(archetypes.size() == 2);
         }
     }
 }

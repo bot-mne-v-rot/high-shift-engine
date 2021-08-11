@@ -7,10 +7,7 @@ namespace ecs {
     using Id = uint32_t;
     struct Entity {
         Id id;
-    };
-
-    class EntityArchetype {
-
+        uint32_t version;
     };
 }
 

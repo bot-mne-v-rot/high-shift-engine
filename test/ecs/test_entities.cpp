@@ -1,65 +1,59 @@
-//#include "doctest.h"
-//
-//#include "ecs/entities.h"
-//#include "ecs/storages/vec_storage.h"
-//
-//namespace {
-//    struct ComponentA {
-//        using Storage = ecs::VecStorage<ComponentA>;
-//    };
-//
-//    struct ComponentB {
-//        using Storage = ecs::VecStorage<ComponentB>;
-//    };
-//
-//    struct ComponentC {
-//        using Storage = ecs::VecStorage<ComponentC>;
-//    };
-//
-//    static_assert(ecs::Component<ComponentA>);
-//    static_assert(ecs::Component<ComponentB>);
-//    static_assert(ecs::Component<ComponentC>);
-//}
-//
-//TEST_SUITE("ecs/entities") {
-//    TEST_CASE("basic") {
-//        ecs::World world;
-//        world.emplace<ComponentA::Storage>();
-//        world.emplace<ComponentB::Storage>();
-//        world.emplace<ComponentC::Storage>();
-//
-//        auto &storage_a = world.get<ComponentA::Storage>();
-//        auto &storage_b = world.get<ComponentB::Storage>();
-//        auto &storage_c = world.get<ComponentC::Storage>();
-//
-//        ecs::Entities entities(&world);
-//
-//        auto id = entities.create(ComponentA{},
-//                                  ComponentB{});
-//
-//        SUBCASE("creation") {
-//            CHECK(storage_a.contains(id));
-//            CHECK(storage_b.contains(id));
-//
-//            CHECK(entities.is_alive(id));
-//        }
-//
-//        SUBCASE("destruction") {
-//            storage_c.emplace(id); // adding additional
-//
-//            entities.destroy(id);
-//
-//            CHECK(!storage_a.contains(id));
-//            CHECK(!storage_b.contains(id));
-//            CHECK(!storage_c.contains(id));
-//
-//            CHECK(!entities.is_alive(id));
-//        }
-//
-//        SUBCASE("storage erasure") {
-//            world.erase<ComponentA::Storage>();
-//            CHECK(!world.has<ComponentA::Storage>());
-//        }
-//
-//    }
-//}
+#include "doctest.h"
+
+#include "ecs/entities.h"
+
+namespace {
+    struct ComponentA {
+        int x;
+    };
+
+    struct ComponentB {
+        int y;
+    };
+
+    struct ComponentC {
+        int z;
+    };
+
+    static_assert(ecs::Component<ComponentA>);
+    static_assert(ecs::Component<ComponentB>);
+    static_assert(ecs::Component<ComponentC>);
+}
+
+TEST_SUITE("ecs/entities") {
+    TEST_CASE("basic") {
+        ecs::Entities entities;
+
+        ecs::Entity entity = entities.create(ComponentA{},
+                                             ComponentB{});
+
+        SUBCASE("creation") {
+            CHECK(entities.is_alive(entity));
+        }
+
+        SUBCASE("destruction") {
+            CHECK(entities.destroy(entity));
+            CHECK(!entities.is_alive(entity));
+        }
+    }
+
+    TEST_CASE("foreach") {
+        ecs::Entities entities;
+
+        int n = 10000;
+        int m = 5000;
+        std::vector<bool> visited(n + m);
+
+        for (int i = 0; i < n; ++i)
+            entities.create(ComponentA{i}, ComponentB{i}, ComponentC{i});
+        for (int i = n; i < n + m; ++i)
+            entities.create(ComponentA{i}, ComponentC{i});
+
+        entities.foreach<ComponentA, ComponentC>([&](auto &a, auto &c) {
+            visited[a.x] = true;
+            a.x = c.z;
+        });
+
+        CHECK(std::find(visited.begin(), visited.end(), false) - visited.begin() == n + m);
+    }
+}

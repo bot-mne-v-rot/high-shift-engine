@@ -140,6 +140,43 @@ namespace ecs {
 
         Id swap_ent_with_last_to_remove(EntityPosInChunk entity_pos);
     };
+
+    class ArchetypesStorage {
+    public:
+        using Storage = std::vector<std::unique_ptr<Archetype>>;
+
+        Archetype *get_or_insert(const std::vector<ComponentType> &components);
+        void erase(Archetype *archetype);
+
+        static constexpr std::size_t max_components = 1024;
+        IdSet component_masks[max_components];
+
+        template<Component... Cs, typename Fn>
+        void query(Fn &&f) const {
+            DynamicIdSetAnd sets_and = query_mask({
+                ComponentType::create<Cs>()...
+            });
+
+            foreach(sets_and, [&](Id id) {
+                f(storage[id].get());
+            });
+        }
+
+        EntityChunkMapping *entities_mapping() const {
+            return _mapping.get();
+        }
+
+        std::size_t size() const {
+            return storage.size();
+        }
+
+    private:
+        Storage storage;
+        std::unique_ptr<EntityChunkMapping> _mapping = std::make_unique<EntityChunkMapping>();
+
+        Storage::iterator find(const std::vector<ComponentType> &components);
+        DynamicIdSetAnd query_mask(const std::vector<ComponentType> &components) const;
+    };
 }
 
 #endif //HIGH_SHIFT_ARCHETYPE_H

@@ -241,6 +241,44 @@ namespace ecs {
         return first() == capacity();
     }
 
+    ////////////////// DynamicIdSet
+
+    inline bool DynamicIdSetAnd::contains(Id id) const {
+        bool answer = false;
+        for (auto &set : sets)
+            answer = (answer && set->contains(id));
+        return answer;
+    }
+
+    inline std::size_t DynamicIdSetAnd::capacity() const {
+        std::size_t cp = IdSet::max_size;
+        for (auto &set : sets)
+            cp = std::min(cp, set->capacity());
+        return cp;
+    }
+
+    inline Id DynamicIdSetAnd::first() const {
+        return detail::first(*this);
+    }
+
+    inline bool DynamicIdSetAnd::empty() const {
+        return first() == capacity();
+    }
+
+    inline std::size_t DynamicIdSetAnd::level_capacity(std::size_t lvl) const {
+        std::size_t cp = IdSet::max_size;
+        for (auto &set : sets)
+            cp = std::min(cp, set->level_capacity(lvl));
+        return cp;
+    }
+
+    inline uint64_t DynamicIdSetAnd::level_data(std::size_t lvl, std::size_t ind) const {
+        uint64_t data = UINT64_MAX;
+        for (auto &set : sets)
+            data &= set->level_data(lvl, ind);
+        return data;
+    }
+
     ////////////////// IdSetOr
 
     template<typename A, typename B>
@@ -427,5 +465,53 @@ namespace ecs {
             }
             lvl3_data &= (lvl3_data - 1); // clear right-most bit
         }
+    }
+
+    template<IdSetLike Set, typename Fn>
+    Id find_if(const Set &set, Fn &&f) {
+        std::size_t lvl3_cp = set.level_capacity(3);
+        std::size_t lvl2_cp = set.level_capacity(2);
+        std::size_t lvl1_cp = set.level_capacity(1);
+        std::size_t lvl0_cp = set.level_capacity(0);
+
+        if (!lvl3_cp)
+            return IdSet::max_size;
+
+        uint64_t lvl3_data = set.level_data(3, 0);
+        while (lvl3_data) {
+            std::size_t lvl2 = __builtin_ctzll(lvl3_data); // get right-most bit
+            if (lvl2 >= lvl2_cp)
+                return IdSet::max_size;
+
+            uint64_t lvl2_data = set.level_data(2, lvl2);
+            while (lvl2_data) {
+                std::size_t lvl1 = (lvl2 << IdSet::shift) |
+                                   __builtin_ctzll(lvl2_data); // get right-most bit
+                if (lvl1 >= lvl1_cp)
+                    return IdSet::max_size;
+
+                uint64_t lvl1_data = set.level_data(1, lvl1);
+                while (lvl1_data) {
+                    std::size_t lvl0 = (lvl1 << IdSet::shift) |
+                                       __builtin_ctzll(lvl1_data); // get right-most bit
+                    if (lvl0 >= lvl0_cp)
+                        return IdSet::max_size;
+
+                    uint64_t lvl0_data = set.level_data(0, lvl0);
+
+                    while (lvl0_data) {
+                        uint64_t pos = (lvl0 << IdSet::shift) |
+                                       __builtin_ctzll(lvl0_data); // get right-most bit
+                        if (f(pos))
+                            return pos;
+                        lvl0_data &= (lvl0_data - 1); // clear right-most bit
+                    }
+                    lvl1_data &= (lvl1_data - 1); // clear right-most bit
+                }
+                lvl2_data &= (lvl2_data - 1); // clear right-most bit
+            }
+            lvl3_data &= (lvl3_data - 1); // clear right-most bit
+        }
+        return IdSet::max_size;
     }
 }

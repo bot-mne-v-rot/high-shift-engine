@@ -1,6 +1,8 @@
 #ifndef HIGH_SHIFT_COMPONENT_H
 #define HIGH_SHIFT_COMPONENT_H
 
+#include "ecs/entity.h"
+
 #include <concepts>
 #include <type_traits>
 
@@ -22,7 +24,10 @@ namespace ecs {
 
     template<typename C>
     concept Component = requires {
+        requires !std::is_fundamental_v<C>;
         requires std::is_trivially_destructible_v<C>;
+        requires !std::is_same_v<Entity, C>;
+        requires std::is_same_v<C, std::remove_cvref_t<C>>;
     };
 
     struct ComponentType {
@@ -44,6 +49,9 @@ namespace ecs {
                 .id = get_component_id<C>()
             };
         }
+
+        bool operator==(const ComponentType &) const = default;
+        bool operator!=(const ComponentType &) const = default;
     };
 }
 

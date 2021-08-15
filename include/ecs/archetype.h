@@ -145,7 +145,9 @@ namespace ecs {
     public:
         using Storage = std::vector<std::unique_ptr<Archetype>>;
 
-        Archetype *get_or_insert(const std::vector<ComponentType> &components);
+        Archetype *get_or_insert(const std::vector<ComponentType> &types);
+        Archetype *get_or_insert(std::size_t components_count,
+                                 const ComponentType *types);
         void erase(Archetype *archetype);
 
         static constexpr std::size_t max_components = 1024;
@@ -174,8 +176,10 @@ namespace ecs {
         Storage storage;
         std::unique_ptr<EntityChunkMapping> _mapping = std::make_unique<EntityChunkMapping>();
 
-        Storage::iterator find(const std::vector<ComponentType> &components);
-        DynamicIdSetAnd query_mask(const std::vector<ComponentType> &components) const;
+        Storage::iterator find(std::size_t components_count,
+                               const ComponentType *types);
+        DynamicIdSetAnd query_mask(std::size_t components_count,
+                                   const ComponentType *types) const;
     };
 }
 

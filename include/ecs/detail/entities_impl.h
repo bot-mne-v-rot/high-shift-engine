@@ -88,48 +88,15 @@ namespace ecs {
     }
 
     template<typename... Cmps>
-    Entity Entities::create(Cmps &&...cmps) {
-        if (free_list == NO_ENTRY) {
-            entries.emplace_back();
-            free_list = entries.size() - 1;
-        }
-
-        Entry &entry = entries[free_list];
-        Entity entity{
-                .id = free_list,
-                .version = entry.version
+    Entity Entities::create(Cmps &&...cmps)
+    requires(Component<std::decay_t<Cmps>> && ...) {
+        ComponentType types[] {
+            ComponentType::create<std::remove_cvref_t<Cmps>>()...
         };
-        free_list = entry.next;
-
-        std::vector<ComponentType> components{
-                ComponentType::create<std::remove_cvref_t<Cmps>>()...
+        void *data[] {
+                &cmps...
         };
-
-        Archetype *arch = archetypes.get_or_insert(components);
-        EntityPosInChunk entity_pos = arch->allocate_entity(entity);
-
-        (detail::create_component(std::forward<Cmps>(cmps), entity_pos), ...);
-
-        return entity;
-    }
-
-    inline bool Entities::destroy(Entity entity) {
-        if (!is_alive(entity))
-            return false;
-
-        auto &entry = entries[entity.id];
-        entry.next = free_list;
-        free_list = entity.id;
-        ++entry.version;
-
-        EntityChunkMapping &mapping = *archetypes.entities_mapping();
-        EntityPosInChunk entity_pos = mapping[entity.id];
-
-        entity_pos.archetype->deallocate_entity(entity_pos);
-        if (entity_pos.archetype->entities_count() == 1)
-            archetypes.erase(entity_pos.archetype);
-
-        return true;
+        return create(sizeof...(Cmps), types, data);
     }
 
     template<typename... Cmps>

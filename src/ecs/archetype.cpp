@@ -167,12 +167,14 @@ namespace ecs {
         return entities[last_entity_pos.index_in_chunk].id;
     }
 
-    auto ArchetypesStorage::find(const std::vector<ComponentType> &components)
+    auto ArchetypesStorage::find(std::size_t components_count,
+                                 const ComponentType *types)
     -> Storage::iterator {
-        DynamicIdSetAnd sets_and = query_mask(components);
+        DynamicIdSetAnd sets_and = query_mask(components_count,
+                                              types);
 
         Id id = find_if(sets_and, [&](Id id) {
-            return storage[id]->components_count() == components.size();
+            return storage[id]->components_count() == components_count;
         });
 
         if (id != IdSet::max_size)
@@ -181,22 +183,30 @@ namespace ecs {
             return storage.end();
     }
 
-    DynamicIdSetAnd ArchetypesStorage::query_mask(const std::vector<ComponentType> &components) const {
+    DynamicIdSetAnd ArchetypesStorage::query_mask(std::size_t components_count,
+                                                  const ComponentType *types) const {
         std::vector<const IdSet *> sets;
-        sets.reserve(components.size());
-        for (auto &type : components)
-            sets.push_back(&component_masks[type.id]);
+        sets.reserve(components_count);
+        for (std::size_t i = 0; i < components_count; ++i)
+            sets.push_back(&component_masks[types[i].id]);
 
         return DynamicIdSetAnd(std::move(sets));
     }
 
-    Archetype *ArchetypesStorage::get_or_insert(const std::vector<ComponentType> &components) {
-        auto it = find(components);
+    Archetype *ArchetypesStorage::get_or_insert(const std::vector<ComponentType> &types) {
+        return get_or_insert(types.size(), types.data());
+    }
+
+    Archetype *ArchetypesStorage::get_or_insert(std::size_t components_count,
+                                                const ComponentType *types) {
+        auto it = find(components_count, types);
 
         if (it == storage.end()) {
-            for (auto &type : components)
+            std::vector<ComponentType> types_vec(types, types + components_count);
+            for (auto &type : types_vec)
                 component_masks[type.id].insert(storage.size());
-            storage.push_back(std::make_unique<Archetype>(components, _mapping.get()));
+
+            storage.push_back(std::make_unique<Archetype>(types_vec, _mapping.get()));
             return storage.back().get();
         } else {
             return it->get();
@@ -204,7 +214,8 @@ namespace ecs {
     }
 
     void ArchetypesStorage::erase(Archetype *archetype) {
-        auto it = find(archetype->component_types());
+        auto it = find(archetype->component_types().size(),
+                       archetype->component_types().data());
 
         if (it != storage.end()) {
             std::size_t found = it - storage.begin();

@@ -30,63 +30,76 @@ namespace ecs {
          * @return created entity.
          */
         template<typename ...Cmps>
-        Entity create(Cmps &&...cmps) {
-            if (free_list == NO_ENTRY) {
-                entries.emplace_back();
-                free_list = entries.size() - 1;
-            }
-
-            Entry &entry = entries[free_list];
-            Entity entity{
-                    .id = free_list,
-                    .version = entry.version
-            };
-            free_list = entry.next;
-
-            std::vector<ComponentType> components{
-                    ComponentType::create<std::remove_cvref_t<Cmps>>()...
-            };
-
-            Archetype *arch = archetypes.get_or_insert(components);
-            EntityPosInChunk entity_pos = arch->allocate_entity(entity.id);
-
-            (create_component(std::forward<Cmps>(cmps), entity_pos), ...);
-
-            return entity;
-        }
+        Entity create(Cmps &&...cmps);
 
         /**
          * Erase all the components assigned to the entity
-         * and mark the entity.
+         * and mark the entity as removed.
+         *
+         * If the archetype of the entity becomes empty,
+         * it will be automatically removed.
          *
          * Due to versioning, consecutive access by removed
          * entity will fail even if id is in use.
          *
          * @return true if entity existed.
          */
-        bool destroy(Entity entity) {
-            if (!is_alive(entity))
-                return false;
+        bool destroy(Entity entity);
 
-            auto &entry = entries[entity.id];
-            entry.next = free_list;
-            free_list = entity.id;
-            ++entry.version;
+        /**
+         * Adds listed components to the entity.
+         *
+         * New archetype is implicitly created and
+         * the entity is transferred.
+         *
+         * @example
+         * Entities.add_components(entity, ComponentA{}, ComponentB{});
+         */
+        template<typename... Cmps>
+        void add_components(Entity entity, Cmps &&...cmps);
 
-            EntityChunkMapping &mapping = *archetypes.entities_mapping();
-            EntityPosInChunk entity_pos = mapping[entity.id];
+        /**
+         * Removes listed components from the entity.
+         *
+         * New archetype is implicitly created and
+         * the entity is transferred.
+         *
+         * @example
+         * Entities.remove_components<ComponentA, ComponentB>(entity);
+         */
+        template<Component... Cmps>
+        void remove_components(Entity entity);
 
-            entity_pos.archetype->deallocate_entity(entity_pos);
-            if (entity_pos.archetype->entities_count() == 1)
-                archetypes.erase(entity_pos.archetype);
-
-            return true;
+        /**
+         * Iterates over each entity that has listed components.
+         *
+         * Deduces types from the function signature.
+         * @example
+         * Entities.foreach([](const ComponentA &a, ComponentB &b) {
+         *     // ...
+         * });
+         *
+         * To get the entity list it as a first argument.
+         * @example
+         * Entities.foreach([](Entity entity, const ComponentA &a, ComponentB &b) {
+         *     // ...
+         * });
+         */
+        template<typename Fn>
+        void foreach(Fn &&fn) const {
+            foreach_functor(fn, &std::remove_cvref_t<Fn>::operator());
         }
 
-        template<typename... Cmps, typename Fn>
-        requires(Component<std::remove_const_t<Cmps>> &&...)
-        void foreach(Fn &&f) const {
-            foreach_impl<Cmps...>(std::forward<Fn>(f), std::make_index_sequence<sizeof...(Cmps)>());
+        template<typename Ret, typename... Args>
+        requires(Component<std::remove_cvref_t<Args>> &&...)
+        void foreach(Ret(*f)(Args...)) const {
+            foreach_impl<std::remove_reference_t<Args>...>(f, std::make_index_sequence<sizeof...(Args)>());
+        }
+
+        template<typename Ret, typename... Args>
+        requires(Component<std::remove_cvref_t<Args>> &&...)
+        void foreach(Ret(*f)(Entity, Args...)) const {
+            foreach_with_entities_impl<std::remove_reference_t<Args>...>(f, std::make_index_sequence<sizeof...(Args)>());
         }
 
         /**
@@ -97,9 +110,9 @@ namespace ecs {
                    entity.version == entries[entity.id].version;
         }
 
-    private:
         ArchetypesStorage archetypes;
 
+    private:
         struct Entry {
             uint32_t next = NO_ENTRY;
             uint32_t version = 0;
@@ -110,65 +123,42 @@ namespace ecs {
         uint32_t free_list = NO_ENTRY;
         static constexpr uint32_t NO_ENTRY = UINT32_MAX;
 
-        template<Component C>
-        static std::size_t get_component_index_in_archetype(const Archetype *archetype) {
-            auto comp_type = ComponentType::create<std::remove_cvref_t<C>>();
-            std::size_t comps_count = archetype->components_count();
-            for (std::size_t i = 0; i < comps_count; ++i)
-                if (archetype->component_types()[i] == comp_type)
-                    return i;
-            return comps_count;
+        template<typename Fn, typename This, typename Ret, typename... Args>
+        requires(Component<std::remove_cvref_t<Args>> &&...)
+        void foreach_functor(Fn &&functor, Ret (This::*)(Args...)) const {
+            foreach_impl<std::remove_reference_t<Args>...>(std::forward<Fn>(functor),
+                                                           std::make_index_sequence<sizeof...(Args)>());
         }
 
-        template<typename C>
-        void create_component(C &&cmp, EntityPosInChunk entity_pos) {
-            using Comp = std::remove_cvref_t<C>;
-            std::size_t comp_index = get_component_index_in_archetype<Comp>(entity_pos.archetype);
-            auto *comp = (Comp *) entity_pos.archetype->get_component(entity_pos, comp_index);
-            new(comp) Comp(std::forward<C>(cmp));
+        template<typename Fn, typename This, typename Ret, typename... Args>
+        requires(Component<std::remove_cvref_t<Args>> &&...)
+        void foreach_functor(Fn &&functor, Ret (This::*)(Args...) const) const {
+            foreach_impl<std::remove_reference_t<Args>...>(std::forward<Fn>(functor),
+                                                           std::make_index_sequence<sizeof...(Args)>());
+        }
+
+        template<typename Fn, typename This, typename Ret, typename... Args>
+        requires(Component<std::remove_cvref_t<Args>> &&...)
+        void foreach_functor(Fn &&functor, Ret (This::*)(Entity, Args...)) const {
+            foreach_with_entities_impl<std::remove_reference_t<Args>...>(std::forward<Fn>(functor),
+                                                                         std::make_index_sequence<sizeof...(Args)>());
+        }
+
+        template<typename Fn, typename This, typename Ret, typename... Args>
+        requires(Component<std::remove_cvref_t<Args>> &&...)
+        void foreach_functor(Fn &&functor, Ret (This::*)(Entity, Args...) const) const {
+            foreach_with_entities_impl<std::remove_reference_t<Args>...>(std::forward<Fn>(functor),
+                                                                         std::make_index_sequence<sizeof...(Args)>());
         }
 
         template<typename... Cmps, typename Fn, std::size_t... Indices>
-        requires(Component<std::remove_const_t<Cmps>> &&...)
-        void foreach_impl(Fn &&f, std::index_sequence<Indices...>) const {
-            archetypes.query<std::remove_const_t<Cmps>...>([&](Archetype *arch) {
-                std::size_t comp_indices[] = {
-                        get_component_index_in_archetype<std::remove_const_t<Cmps>>(arch)...
-                };
-                std::size_t offsets[] = {
-                        arch->component_offsets()[comp_indices[Indices]]...
-                };
-                std::size_t array_offsets[] = {
-                        arch->component_types()[comp_indices[Indices]].array_offset...
-                };
+        void foreach_impl(Fn &&f, std::index_sequence<Indices...> indices) const;
 
-                std::size_t chunks_count = arch->chunks_count();
-                Chunk *chunk = arch->chunks();
-
-                std::size_t chunk_capacity = arch->chunk_capacity();
-                for (std::size_t i = 0; i + 1 < chunks_count; ++i) {
-                    uint8_t *ptrs[] = {
-                            (chunk->data + offsets[Indices])...
-                    };
-
-                    for (std::size_t j = 0; j < chunk_capacity; ++j)
-                        f((((Cmps *) ptrs[Indices])[j])...);
-                    ++chunk;
-                }
-
-                std::size_t last_chunk_entities_count = chunk_capacity - arch->last_chunk_free_slots();
-                uint8_t *ptrs[] = {
-                        (chunk->data + offsets[Indices])...
-                };
-
-                for (std::size_t j = 0; j < last_chunk_entities_count; ++j) {
-                    f((*(Cmps *) ptrs[Indices])...);
-
-                    ((ptrs[Indices] += array_offsets[Indices]), ...);
-                }
-            });
-        }
+        template<typename... Cmps, typename Fn, std::size_t... Indices>
+        void foreach_with_entities_impl(Fn &&f, std::index_sequence<Indices...> indices) const;
     };
 }
+
+#include "ecs/detail/entities_impl.h"
 
 #endif //HIGH_SHIFT_ENTITIES_H

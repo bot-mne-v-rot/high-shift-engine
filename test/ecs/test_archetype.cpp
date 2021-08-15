@@ -198,7 +198,8 @@ TEST_SUITE("ecs::Archetype") {
 
         SUBCASE("single entity") {
             ecs::Id id = 20;
-            ecs::EntityPosInChunk pos = archetype.allocate_entity(id);
+            ecs::Entity entity{id, 0};
+            ecs::EntityPosInChunk pos = archetype.allocate_entity(entity);
 
             ecs::Chunk *chunks = archetype.chunks();
             std::size_t chunks_count = archetype.chunks_count();
@@ -209,12 +210,12 @@ TEST_SUITE("ecs::Archetype") {
             CHECK(archetype.entities_count() == 1);
             CHECK(archetype.last_chunk_free_slots() == archetype.chunk_capacity() - 1);
 
-            void *id_ptr =
-                    chunks[pos.chunk_index].data + archetype.entity_ids_offset() +
+            void *ent_ptr =
+                    chunks[pos.chunk_index].data + archetype.entities_offset() +
                     pos.index_in_chunk * sizeof(ecs::Id);
 
-            CHECK(*reinterpret_cast<ecs::Id *>(id_ptr) == id);
-            CHECK(archetype.get_entity_id(pos) == id);
+            CHECK(*reinterpret_cast<ecs::Entity *>(ent_ptr) == entity);
+            CHECK(archetype.get_entity(pos) == entity);
         }
     }
 }
@@ -225,10 +226,10 @@ TEST_SUITE("ecs::ArchetypesStorage") {
         CHECK(archetypes.entities_mapping());
 
         std::vector<ecs::ComponentType> components{
-            ecs::ComponentType::create<Position>(),
-            ecs::ComponentType::create<CacheLineAligned1>(),
-            ecs::ComponentType::create<CacheLineAligned2>(),
-            ecs::ComponentType::create<SomeComponent>()
+                ecs::ComponentType::create<Position>(),
+                ecs::ComponentType::create<CacheLineAligned1>(),
+                ecs::ComponentType::create<CacheLineAligned2>(),
+                ecs::ComponentType::create<SomeComponent>()
         };
 
         CHECK(archetypes.size() == 0);
@@ -247,7 +248,7 @@ TEST_SUITE("ecs::ArchetypesStorage") {
         }
 
         std::vector<ecs::ComponentType> components2{
-            ecs::ComponentType::create<Position>()
+                ecs::ComponentType::create<Position>()
         };
 
         ecs::Archetype *arch2 = archetypes.get_or_insert(components2);
@@ -268,15 +269,15 @@ TEST_SUITE("ecs::ArchetypesStorage") {
         ecs::ArchetypesStorage archetypes;
 
         std::vector<ecs::ComponentType> components1{
-            ecs::ComponentType::create<Position>(),
-            ecs::ComponentType::create<CacheLineAligned1>(),
-            ecs::ComponentType::create<CacheLineAligned2>(),
-            ecs::ComponentType::create<SomeComponent>()
+                ecs::ComponentType::create<Position>(),
+                ecs::ComponentType::create<CacheLineAligned1>(),
+                ecs::ComponentType::create<CacheLineAligned2>(),
+                ecs::ComponentType::create<SomeComponent>()
         };
 
         std::vector<ecs::ComponentType> components2{
-            ecs::ComponentType::create<Position>(),
-            ecs::ComponentType::create<SomeComponent>()
+                ecs::ComponentType::create<Position>(),
+                ecs::ComponentType::create<SomeComponent>()
         };
 
         ecs::Archetype *arch1 = archetypes.get_or_insert(components1);

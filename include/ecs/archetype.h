@@ -68,7 +68,7 @@ namespace ecs {
             calculate_capacity();
         }
 
-        EntityPosInChunk allocate_entity(Id id);
+        EntityPosInChunk allocate_entity(Entity entity);
         void deallocate_entity(EntityPosInChunk entity_pos);
 
         Chunk *chunks() {
@@ -99,8 +99,8 @@ namespace ecs {
             return _chunk_capacity;
         }
 
-        std::size_t entity_ids_offset() const {
-            return _entity_ids_offset;
+        std::size_t entities_offset() const {
+            return _entities_offset;
         }
 
         std::size_t entities_count() const {
@@ -111,9 +111,9 @@ namespace ecs {
             return _last_chunk_free_slots;
         }
 
-        Id get_entity_id(EntityPosInChunk pos) const {
-            auto *ids = (const Id *) (_chunks[pos.chunk_index].data + _entity_ids_offset);
-            return ids[pos.index_in_chunk];
+        Entity get_entity(EntityPosInChunk pos) const {
+            auto *entities = (const Entity *) (_chunks[pos.chunk_index].data + _entities_offset);
+            return entities[pos.index_in_chunk];
         }
 
         void *get_component(EntityPosInChunk pos, std::size_t comp_index) {
@@ -126,7 +126,7 @@ namespace ecs {
         std::vector<ComponentType> _component_types;
         std::vector<std::size_t> _component_offsets;
         EntityChunkMapping *entities_mapping;
-        std::size_t _entity_ids_offset;
+        std::size_t _entities_offset;
         std::size_t _chunk_capacity;
         std::size_t _last_chunk_free_slots = 0;
         std::size_t _entities_count = 0;

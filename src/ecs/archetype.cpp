@@ -49,14 +49,14 @@ namespace ecs {
      * You can imagine that chunk data
      * is actually a struct like this
      * struct Data {
-     *     Id entity_ids[_chunk_capacity];
+     *     Entity entities[_chunk_capacity];
      *     Component_0 c0[_chunk_capacity];
      *     Component_1 c1[_chunk_capacity];
      *     // ...
      * }
      *
      * Then these values are just:
-     * _entities_ids_offset = offsetof(Data, entity_ids);
+     * _entities_offset = offsetof(Data, entities);
      * _component_offsets[i] = offsetof(Data, ci);
      *
      * Offsets are calculated with respect to the
@@ -67,8 +67,8 @@ namespace ecs {
      * because chunks are aligned by the page size.
      */
     std::size_t Archetype::calculate_offsets() {
-        _entity_ids_offset = 0;
-        std::size_t offset = sizeof(Id) * _chunk_capacity;
+        _entities_offset = 0;
+        std::size_t offset = sizeof(Entity) * _chunk_capacity;
 
         _component_offsets.resize(_component_types.size());
         for (std::size_t i = 0; i < _component_types.size(); ++i) {
@@ -81,7 +81,7 @@ namespace ecs {
         return offset; // expected size
     }
 
-    EntityPosInChunk Archetype::allocate_entity(Id id) {
+    EntityPosInChunk Archetype::allocate_entity(Entity entity) {
         if (_last_chunk_free_slots == 0)
             allocate_chunk();
 
@@ -90,10 +90,10 @@ namespace ecs {
         entity_pos.chunk_index = _chunks.size() - 1;
         entity_pos.index_in_chunk = _chunk_capacity - _last_chunk_free_slots;
 
-        auto *entities = reinterpret_cast<Id *>(_chunks.back().data + _entity_ids_offset);
-        entities[entity_pos.index_in_chunk] = id;
+        auto *entities = reinterpret_cast<Entity *>(_chunks.back().data + _entities_offset);
+        entities[entity_pos.index_in_chunk] = entity;
 
-        entities_mapping->insert(id, entity_pos);
+        entities_mapping->insert(entity.id, entity_pos);
         --_last_chunk_free_slots;
         ++_entities_count;
 
@@ -157,14 +157,14 @@ namespace ecs {
                 std::swap(ent_component[b], last_component[b]);
         }
 
-        auto *entities = reinterpret_cast<Id *>(_chunks.back().data + _entity_ids_offset);
+        auto *entities = reinterpret_cast<Entity *>(_chunks.back().data + _entities_offset);
         std::swap(entities[entity_pos.index_in_chunk],
                   entities[last_entity_pos.index_in_chunk]);
 
-        entities_mapping->insert(entities[entity_pos.index_in_chunk], entity_pos);
+        entities_mapping->insert(entities[entity_pos.index_in_chunk].id, entity_pos);
 
         // return entity id
-        return entities[last_entity_pos.index_in_chunk];
+        return entities[last_entity_pos.index_in_chunk].id;
     }
 
     auto ArchetypesStorage::find(const std::vector<ComponentType> &components)

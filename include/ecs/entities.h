@@ -90,6 +90,10 @@ namespace ecs {
             foreach_functor(fn, &std::remove_cvref_t<Fn>::operator());
         }
 
+        template<typename... Cmps>
+        std::tuple<Cmps &...> get_components(Entity entity) const
+        requires(Component<std::remove_const_t<Cmps>> && ...);
+
         template<typename Ret, typename... Args>
         requires(Component<std::remove_cvref_t<Args>> &&...)
         void foreach(Ret(*f)(Args...)) const {

@@ -57,8 +57,8 @@ namespace ecs {
                 std::size_t to_index = detail::get_component_index_in_archetype(to.archetype, component);
 
                 memcpy(to.archetype->get_component(to, to_index),
-                        from.archetype->get_component(from, from_index),
-                        component.size);
+                       from.archetype->get_component(from, from_index),
+                       component.size);
             }
         }
 
@@ -77,6 +77,13 @@ namespace ecs {
                 archetypes.erase(old_entity_pos.archetype);
 
             return new_entity_pos;
+        }
+
+        template<typename C>
+        C &get_component(EntityPosInChunk entity_pos) {
+            using Comp = std::remove_const_t<C>;
+            std::size_t comp_index = detail::get_component_index_in_archetype<Comp>(entity_pos.archetype);
+            return *(C *) entity_pos.archetype->get_component(entity_pos, comp_index);
         }
     }
 
@@ -156,6 +163,16 @@ namespace ecs {
 
         EntityPosInChunk new_entity_pos = detail::transfer_entity(entity, old_entity_pos, archetypes,
                                                                   new_components, new_components);
+    }
+
+    template<typename... Cmps>
+    std::tuple<Cmps &...> Entities::get_components(Entity entity) const
+    requires(Component <std::remove_const_t<Cmps>> &&...) {
+        EntityChunkMapping &mapping = *archetypes.entities_mapping();
+        EntityPosInChunk entity_pos = mapping[entity.id];
+        return std::forward_as_tuple(
+                detail::get_component<Cmps>(entity_pos)...
+        );
     }
 
     template<typename... Cmps, typename Fn, std::size_t... Indices>

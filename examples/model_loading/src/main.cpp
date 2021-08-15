@@ -15,11 +15,11 @@ public:
         input_system.disable_cursor();
     }
 
-    void update(render::Transform::Storage &transforms,
+    void update(const ecs::Entities &entities,
                 const input::Input &input,
                 ecs::GameLoopControl &game_loop,
                 const ecs::DeltaTime &delta_time) {
-        render::Transform &transform = transforms[camera_id];
+        auto[transform] = entities.get_components<render::Transform>(camera);
 
         if (input.on_key_down(input::KEY_ESCAPE))
             game_loop.stop();
@@ -29,7 +29,7 @@ public:
     }
 
 private:
-    ecs::Id camera_id = 0;
+    ecs::Entity camera;
 
     void create_camera(ecs::World &world) {
         auto &entities = world.get<ecs::Entities>();
@@ -38,7 +38,7 @@ private:
         auto cam = render::Camera{
             .projection = glm::perspective(glm::radians(45.0f),
                                            800.0f / 600.0f, 0.1f, 100.0f)};
-        camera_id = entities.create(tr, cam);
+        camera = entities.create(tr, cam);
     }
 
     void update_camera_rot(const input::Input &input,

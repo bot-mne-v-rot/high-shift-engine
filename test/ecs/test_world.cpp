@@ -2,7 +2,7 @@
 
 #include "ecs/world.h"
 
-TEST_SUITE("ecs/world") {
+TEST_SUITE("ecs::World") {
     TEST_CASE("double get") {
         ecs::World world;
 

@@ -4,7 +4,7 @@
 
 #include <climits>
 
-TEST_SUITE("ecs/storages/IdSet") {
+TEST_SUITE("ecs::IdSet") {
     TEST_CASE("empty") {
         ecs::IdSet set;
         CHECK(set.size() == 0);

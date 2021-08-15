@@ -20,7 +20,7 @@ namespace {
     static_assert(ecs::Component<ComponentC>);
 }
 
-TEST_SUITE("ecs/entities") {
+TEST_SUITE("ecs::Entities") {
     TEST_CASE("basic") {
         ecs::Entities entities;
 
@@ -34,6 +34,15 @@ TEST_SUITE("ecs/entities") {
         SUBCASE("destruction") {
             CHECK(entities.destroy(entity));
             CHECK(!entities.is_alive(entity));
+
+            SUBCASE("id reuse") {
+                ecs::Entity ent2 = entities.create(ComponentC{});
+                CHECK(ent2.id == entity.id);
+                CHECK(ent2.version != entity.version);
+
+                CHECK(entities.is_alive(ent2));
+                CHECK(!entities.is_alive(entity));
+            }
         }
     }
 

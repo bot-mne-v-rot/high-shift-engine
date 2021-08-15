@@ -2,7 +2,7 @@
 
 #include "ecs/archetype.h"
 
-TEST_SUITE("ecs/EntityChunkMapping") {
+TEST_SUITE("ecs::EntityChunkMapping") {
     TEST_CASE("empty") {
         ecs::EntityChunkMapping mapping;
 
@@ -96,7 +96,7 @@ namespace {
     };
 }
 
-TEST_SUITE("ecs/ComponentType") {
+TEST_SUITE("ecs::ComponentType") {
     TEST_CASE("create") {
         ecs::ComponentType type;
         std::size_t size, align;
@@ -136,7 +136,7 @@ TEST_SUITE("ecs/ComponentType") {
     }
 }
 
-TEST_SUITE("ecs/Archetype") {
+TEST_SUITE("ecs::Archetype") {
     TEST_CASE("offsets") {
         ecs::EntityChunkMapping mapping;
         ecs::Archetype *archetype;
@@ -219,7 +219,7 @@ TEST_SUITE("ecs/Archetype") {
     }
 }
 
-TEST_SUITE("ecs/ArchetypesStorage") {
+TEST_SUITE("ecs::ArchetypesStorage") {
     TEST_CASE("get_or_insert") {
         ecs::ArchetypesStorage archetypes;
         CHECK(archetypes.entities_mapping());

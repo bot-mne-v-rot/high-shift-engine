@@ -155,9 +155,10 @@ namespace ecs {
 
         template<Component... Cs, typename Fn>
         void query(Fn &&f) const {
-            DynamicIdSetAnd sets_and = query_mask({
-                ComponentType::create<Cs>()...
-            });
+            ComponentType types[] {
+                    ComponentType::create<Cs>()...
+            };
+            DynamicIdSetAnd sets_and = query_mask(sizeof...(Cs), types);
 
             foreach(sets_and, [&](Id id) {
                 f(storage[id].get());

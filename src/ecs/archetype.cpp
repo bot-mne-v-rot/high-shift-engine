@@ -206,7 +206,7 @@ namespace ecs {
             for (auto &type : types_vec)
                 component_masks[type.id].insert(storage.size());
 
-            storage.push_back(std::make_unique<Archetype>(types_vec, _mapping.get()));
+            storage.push_back(std::make_unique<Archetype>(std::move(types_vec), _mapping.get()));
             return storage.back().get();
         } else {
             return it->get();

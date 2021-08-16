@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "glm/glm.hpp"
+#include "render/lights.h"
 
 namespace render {
 
@@ -52,6 +53,11 @@ namespace render {
         void set_float(std::string_view name, float value) const;
         void set_bool(std::string_view name, bool value) const;
         void set_mat4(std::string_view name, const glm::mat4 &mat) const;
+        void set_vec3(std::string_view name, float x, float y, float z) const;
+        void set_vec3(std::string_view name, const glm::vec3 &vec) const;
+        void set_dir_light(int index, const DirLight &dir_light) const;
+        void set_point_light(int index, const glm::vec3 &position, const PointLight &point_light) const;
+        void set_spot_light(int index, const glm::vec3 &position, const SpotLight &Spot_light) const;
 
         unsigned int id;
     };

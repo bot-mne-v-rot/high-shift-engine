@@ -10,6 +10,7 @@
 #include "render/shader.h"
 #include "render/texture_loader.h"
 #include "render/shader_loader.h"
+#include "render/lights.h"
 
 namespace render {
     struct Transform {

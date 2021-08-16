@@ -33,7 +33,23 @@ namespace ecs {
         /**
          * @return true if id wasn't present in the table
          */
-        bool insert(Id id, const EntityPosInChunk &entity_pos);
+        bool insert(Id id, EntityPosInChunk entity_pos);
+
+        /**
+         * Same as insert but does not perform checking if id is
+         * present.
+         */
+        void insert_unsafe(Id id, EntityPosInChunk entity_pos);
+
+        /**
+         * Same as insert_unsafe but for multiple entities.
+         * Does not perform version checking.
+         *
+         * Position for the next entity is just an increment of the previous index_in_chunk.
+         * chunk_index is not incremented.
+         */
+        void insert_multiple(std::size_t entities_count, const Entity *entities,
+                             EntityPosInChunk starting_pos);
 
         /**
          * @return true if id was present in the table
@@ -70,6 +86,12 @@ namespace ecs {
 
         EntityPosInChunk allocate_entity(Entity entity);
         void deallocate_entity(EntityPosInChunk entity_pos);
+
+        /**
+         * Efficiently allocates entities in a row.
+         * @return position of the first allocated entity.
+         */
+        EntityPosInChunk allocate_entities(std::size_t entities_count, const Entity *entities);
 
         Chunk *chunks() {
             return _chunks.data();
@@ -134,6 +156,7 @@ namespace ecs {
         void calculate_capacity();
         std::size_t calculate_offsets();
 
+        void reserve_chunks(std::size_t count);
         void allocate_chunk();
         void deallocate_chunk(std::size_t chunk_index);
         void deallocate_last_chunk();

@@ -32,7 +32,8 @@ namespace ecs {
          * @return created entity.
          */
         template<typename ...Cmps>
-        Entity create(Cmps &&...cmps)requires(Component<std::decay_t<Cmps>> &&...);
+        Entity create(Cmps &&...cmps)
+        requires(Component<std::decay_t<Cmps>> &&...);
 
         /**
          * Creates an entity listing all the initial components.
@@ -73,17 +74,19 @@ namespace ecs {
          *
          * @details
          * Overview of memory layout:
-         *     types:
-         *     |ComponentType|ComponentType|ComponentType|
-         *     data:
-         *     data[0] = |Component0|Component0|Component0|
-         *     data[1] = |    Component1    |    Component1    |    Component1    |
-         *     data[2] = |  Component2  |  Component2  |  Component2  |
+         * @code
+         * types:
+         * |ComponentType|ComponentType|ComponentType|
+         * data:
+         * data[0] = |Component0|Component0|Component0|
+         * data[1] = |    Component1    |    Component1    |    Component1    |
+         * data[2] = |  Component2  |  Component2  |  Component2  |
+         * @endcode
          *
-         * Length of \a data[i] should be equal \a entities_count.
-         * Length of \a data should be equal \a components_count.
-         * Length of \a types should be equal \a components_count.
-         * Length of \a entities should be equal \a entities_count.
+         * Length of @c data[i] should be equal @c entities_count.
+         * Length of @c data should be equal @c components_count.
+         * Length of @c types should be equal @c components_count.
+         * Length of @c entities should be equal @c entities_count.
          *
          */
         void create_multiple(std::size_t entities_count,
@@ -91,6 +94,14 @@ namespace ecs {
                              const ComponentType *types,
                              const void *const *data,
                              Entity *entities);
+
+        /**
+         * Same as above but does not output @c entities.
+         */
+        void create_multiple(std::size_t entities_count,
+                             std::size_t components_count,
+                             const ComponentType *types,
+                             const void *const *data);
 
         /**
          * Erases all the components assigned to the entity
@@ -116,7 +127,9 @@ namespace ecs {
          * the entity is transferred.
          *
          * @example
+         * @code
          * entities.add_components(entity, ComponentA{}, ComponentB{});
+         * @endcode
          */
         template<typename... Cmps>
         void add_components(Entity entity, Cmps &&...cmps);
@@ -129,7 +142,9 @@ namespace ecs {
          * the entity is transferred.
          *
          * @example
+         * @code
          * entities.remove_components<ComponentA, ComponentB>(entity);
+         * @endcode
          */
         template<Component... Cmps>
         void remove_components(Entity entity);
@@ -140,15 +155,19 @@ namespace ecs {
          *
          * Deduces types from the function signature.
          * @example
+         * @code
          * Entities.foreach([](const ComponentA &a, ComponentB &b) {
          *     // ...
          * });
+         * @endcode
          *
          * To get the entity list it as a first argument.
          * @example
+         * @code
          * Entities.foreach([](Entity entity, const ComponentA &a, ComponentB &b) {
          *     // ...
          * });
+         * @endcode
          */
         template<typename Fn>
         void foreach(Fn &&fn) const {

@@ -51,14 +51,38 @@ TEST_SUITE("ecs::Entities") {
     TEST_CASE("foreach") {
         ecs::Entities entities;
 
-        int n = 10000;
-        int m = 5000;
+        int n = 10000000;
+        int m = 5000000;
         std::vector<bool> visited(n + m);
 
+        std::vector<ComponentA> a_comps(n + m);
+        std::vector<ComponentB> b_comps(n);
+        std::vector<ComponentC> c_comps(n + m);
+
         for (int i = 0; i < n; ++i)
-            entities.create(ComponentA{i}, ComponentB{i}, ComponentC{2 * i});
+            a_comps[i].x = i, b_comps[i].y = i, c_comps[i].z = 2 * i;
         for (int i = n; i < n + m; ++i)
-            entities.create(ComponentC{2 * i}, ComponentA{i});
+            a_comps[i].x = i, c_comps[i].z = 2 * i;
+
+        ecs::ComponentType types1[] {
+            ecs::ComponentType::create<ComponentA>(),
+            ecs::ComponentType::create<ComponentB>(),
+            ecs::ComponentType::create<ComponentC>()
+        };
+        void *data1[] {
+            a_comps.data(), b_comps.data(), c_comps.data()
+        };
+
+        ecs::ComponentType types2[] {
+            ecs::ComponentType::create<ComponentC>(),
+            ecs::ComponentType::create<ComponentA>()
+        };
+        void *data2[] {
+            c_comps.data() + n, a_comps.data() + n
+        };
+
+        entities.create_multiple(n, 3, types1, data1);
+        entities.create_multiple(m, 2, types2, data2);
 
         SUBCASE("plain foreach") {
             entities.foreach([&](const ComponentA &a, const ComponentC &c) {

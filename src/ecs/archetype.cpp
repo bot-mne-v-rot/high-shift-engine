@@ -22,25 +22,27 @@ namespace ecs {
 
     void EntityChunkMapping::insert_multiple(std::size_t entities_count, const Entity *entities,
                                              EntityPosInChunk starting_pos) {
-        Id max_id = 0;
-        for (std::size_t i = 0; i < entities_count; ++i)
-            max_id = entities[i].id;
+        std::size_t dense_sz = dense.size();
+        dense.resize(dense_sz + entities_count);
+        dense_ids.resize(dense_sz + entities_count);
 
+        for (std::size_t i = 0; i < entities_count; ++i) {
+            present.insert_unsafe(entities[i].id);
+            dense[dense_sz + i] = starting_pos;
+            dense_ids[dense_sz + i] = entities[i].id;
+            ++starting_pos.index_in_chunk;
+        }
+    }
+
+    void EntityChunkMapping::reserve(Id max_id, std::size_t additional_count) {
         present.reserve(max_id);
         sparse.resize(present.capacity());
 
         std::size_t next_capacity = 1;
-        while (next_capacity < dense.size() + entities_count)
+        while (next_capacity < dense.size() + additional_count)
             next_capacity *= 2;
         dense.reserve(next_capacity);
         dense_ids.reserve(next_capacity);
-
-        for (std::size_t i = 0; i < entities_count; ++i) {
-            present.insert(entities[i].id);
-            dense.push_back(starting_pos);
-            dense_ids.push_back(entities[i].id);
-            ++starting_pos.index_in_chunk;
-        }
     }
 
     bool EntityChunkMapping::erase(Id id) {
@@ -114,10 +116,10 @@ namespace ecs {
 
         EntityPosInChunk entity_pos;
         entity_pos.archetype = this;
-        entity_pos.chunk_index = _chunks.size() - 1;
+        entity_pos.chunk_index = _chunks_count - 1;
         entity_pos.index_in_chunk = _chunk_capacity - _last_chunk_free_slots;
 
-        auto *entities = reinterpret_cast<Entity *>(_chunks.back().data + _entities_offset);
+        auto *entities = reinterpret_cast<Entity *>(_chunks[_chunks_count - 1].data + _entities_offset);
         entities[entity_pos.index_in_chunk] = entity;
 
         entities_mapping->insert(entity.id, entity_pos);
@@ -144,11 +146,16 @@ namespace ecs {
 
         EntityPosInChunk entity_pos;
         entity_pos.archetype = this;
-        entity_pos.chunk_index = _chunks.size() - 1;
+        entity_pos.chunk_index = _chunks_count - 1;
         entity_pos.index_in_chunk = _chunk_capacity - _last_chunk_free_slots;
 
+        Id max_id = 0;
+        for (std::size_t i = 0; i < entities_count; ++i)
+            max_id = std::max(max_id, entities[i].id);
+        entities_mapping->reserve(max_id, entities_count);
+
         auto allocate_in_chunk = [&](std::size_t count, EntityPosInChunk starting_pos) {
-            auto *chunk_entities = reinterpret_cast<Entity *>(_chunks.back().data + _entities_offset);
+            auto *chunk_entities = reinterpret_cast<Entity *>(_chunks[_chunks_count - 1].data + _entities_offset);
             memcpy(chunk_entities + entity_pos.index_in_chunk, entities, count * sizeof(Entity));
 
             entities_mapping->insert_multiple(count, entities, entity_pos);
@@ -195,48 +202,61 @@ namespace ecs {
     }
 
     void Archetype::reserve_chunks(std::size_t count) {
-        std::size_t target_cp = _chunks.size() + count;
+        std::size_t target_cp = _chunks_count + count;
+        if (target_cp <= _chunks_cp)
+            return;
+
         std::size_t new_cp = 1;
         while (new_cp < target_cp)
             new_cp *= 2;
-        _chunks.reserve(new_cp);
+
+        Chunk *new_chunks = new Chunk[new_cp];
+        memcpy(new_chunks, _chunks, chunk_size * _chunks_cp);
+        delete[] _chunks;
+        _chunks = new_chunks;
+        _chunks_cp = new_cp;
+    }
+
+    Archetype::~Archetype() {
+        delete[] _chunks;
     }
 
     void Archetype::allocate_chunk() {
-        _chunks.emplace_back();
+        if (_chunks_count == _chunks_cp)
+            reserve_chunks(1);
+        ++_chunks_count;
         _last_chunk_free_slots = _chunk_capacity;
     }
 
     void Archetype::deallocate_chunk(std::size_t chunk_index) {
-        std::size_t last = _chunks.size() - 1;
-        std::size_t one_before_last = _chunks.size() - 2;
+        std::size_t last = _chunks_count - 1;
+        std::size_t one_before_last = _chunks_count - 2;
 
         if (chunk_index == last) {
-            _chunks.pop_back();
-        } else if (_last_chunk_free_slots == 0) {
+            --_chunks_count;
+        } else if (_last_chunk_free_slots == 0 || chunk_index == one_before_last) {
             std::swap(_chunks[chunk_index], _chunks[last]);
-            _chunks.pop_back();
-        } else if (chunk_index == one_before_last) {
-            _chunks.erase(_chunks.begin() + (std::ptrdiff_t) chunk_index);
+            --_chunks_count;
         } else {
             std::swap(_chunks[chunk_index], _chunks[one_before_last]);
-            _chunks.erase(_chunks.begin() + (std::ptrdiff_t) chunk_index);
+            std::swap(_chunks[one_before_last], _chunks[last]);
+            --_chunks_count;
         }
         _last_chunk_free_slots = 0;
     }
 
     void Archetype::deallocate_last_chunk() {
-        _chunks.pop_back();
+        --_chunks_count;
         _last_chunk_free_slots = 0;
     }
 
     Id Archetype::swap_ent_with_last_to_remove(EntityPosInChunk entity_pos) {
         std::size_t components_num = _component_types.size();
         Chunk &entity_chunk = _chunks[entity_pos.chunk_index];
-        Chunk &last_chunk = _chunks.back();
+        Chunk &last_chunk = _chunks[_chunks_count - 1];
 
         EntityPosInChunk last_entity_pos{
-                .chunk_index = (uint32_t) (_chunks.size() - 1),
+            .chunk_index = (uint32_t) (_chunks_count - 1),
                 .index_in_chunk = (uint16_t) (_chunk_capacity - _last_chunk_free_slots - 1)
         };
 
@@ -249,7 +269,7 @@ namespace ecs {
                 std::swap(ent_component[b], last_component[b]);
         }
 
-        auto *entities = reinterpret_cast<Entity *>(_chunks.back().data + _entities_offset);
+        auto *entities = reinterpret_cast<Entity *>(last_chunk.data + _entities_offset);
         std::swap(entities[entity_pos.index_in_chunk],
                   entities[last_entity_pos.index_in_chunk]);
 

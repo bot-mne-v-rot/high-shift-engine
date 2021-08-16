@@ -43,6 +43,13 @@ namespace ecs {
         bool erase(Id id); // true if element was present
         bool contains(Id id) const;
 
+        /**
+         * Unlike usual insert does not perform
+         * memory allocation and boundaries check.
+         * Does not check if id is present.
+         */
+        void insert_unsafe(Id id);
+
         std::size_t size() const;
         std::size_t capacity() const;
         bool empty() const;

@@ -44,12 +44,15 @@ namespace ecs {
         /**
          * Same as insert_unsafe but for multiple entities.
          * Does not perform version checking.
+         * Does not perform auto memory allocations.
          *
          * Position for the next entity is just an increment of the previous index_in_chunk.
          * chunk_index is not incremented.
          */
         void insert_multiple(std::size_t entities_count, const Entity *entities,
                              EntityPosInChunk starting_pos);
+
+        void reserve(Id max_id, std::size_t additional_count);
 
         /**
          * @return true if id was present in the table
@@ -84,6 +87,8 @@ namespace ecs {
             calculate_capacity();
         }
 
+        ~Archetype();
+
         EntityPosInChunk allocate_entity(Entity entity);
         void deallocate_entity(EntityPosInChunk entity_pos);
 
@@ -94,15 +99,15 @@ namespace ecs {
         EntityPosInChunk allocate_entities(std::size_t entities_count, const Entity *entities);
 
         Chunk *chunks() {
-            return _chunks.data();
+            return _chunks;
         }
 
         const Chunk *chunks() const {
-            return _chunks.data();
+            return _chunks;
         }
 
         std::size_t chunks_count() const {
-            return _chunks.size();
+            return _chunks_count;
         }
 
         std::size_t components_count() const {
@@ -144,10 +149,14 @@ namespace ecs {
         }
 
     private:
-        std::vector<Chunk> _chunks;
+        Chunk *_chunks = nullptr;
+        std::size_t _chunks_count = 0;
+        std::size_t _chunks_cp = 0;
+
         std::vector<ComponentType> _component_types;
         std::vector<std::size_t> _component_offsets;
         EntityChunkMapping *entities_mapping;
+
         std::size_t _entities_offset;
         std::size_t _chunk_capacity;
         std::size_t _last_chunk_free_slots = 0;

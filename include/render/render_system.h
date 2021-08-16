@@ -14,19 +14,16 @@
 
 namespace render {
     struct Transform {
-        using Storage = ecs::VecStorage<Transform>;
         glm::vec3 position;
         glm::quat rotation;
     };
 
     struct MeshRenderer {
-        using Storage = ecs::VecStorage<MeshRenderer>;
         Handle<Model> model_handle;
         Handle<ShaderProgram> shader_program_handle;
     };
 
     struct Camera {
-        using Storage = ecs::SparseVecStorage<Camera>;
         glm::mat4 projection;
     };
 
@@ -44,13 +41,7 @@ namespace render {
         void update(const ShaderLoader &shader_loader,
                     const TextureLoader &texture_loader,
                     const ModelLoader &model_loader,
-                    const MeshRenderer::Storage &renderers,
-                    const Transform::Storage &transforms,
-                    const Camera::Storage &cameras,
-                    const DirLight::Storage &dir_lights,
-                    const PointLight::Storage &point_lights,
-                    const SpotLight::Storage &spot_lights
-                    );
+                    const ecs::Entities &entities);
 
         void teardown(ecs::World &world);
 

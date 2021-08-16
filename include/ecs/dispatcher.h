@@ -94,7 +94,7 @@ namespace ecs {
     class Dispatcher {
     public:
         explicit Dispatcher() : world(std::make_unique<World>()) {
-            world->emplace<Entities>(world.get());
+//            world->emplace<Entities>(world.get());
             world->emplace<GameLoopControl>();
             world->emplace<DeltaTime>();
         };

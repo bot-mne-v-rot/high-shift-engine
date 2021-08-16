@@ -2,6 +2,7 @@
 #define HIGH_SHIFT_ENTITIES_H
 
 #include "ecs/world.h"
+#include "ecs/archetype.h"
 #include "ecs/component.h"
 #include "ecs/id_set.h"
 
@@ -10,84 +11,230 @@ namespace ecs {
     /**
      * Class to manage entities.
      *
+     * @details
      * Entity is not stored directly anywhere.
      * It is represented by an id and its components.
      * But we still need a way to track used and free ids.
      *
+     * @note
      * This resource is automatically injected into the world
      * by Dispatcher. So you can easily access it within your
      * systems.
      */
     class Entities {
     public:
-        explicit Entities(World *world) : world(world) {}
+        explicit Entities() {}
 
         /**
-         * Create an entity listing all the initial components.
-         * Alternatively, you can call this method with no parameters
-         * and insert each component to the storage directly.
+         * Creates an entity listing all the initial components.
+         * Automatically creates archetype.
          *
-         * @note Inserting components directly for non-existing
-         * entities can lead to those components being overridden
-         * if its id is allocated by Entities class.
-         *
-         * @return id of just created entity.
+         * @return created entity.
          */
         template<typename ...Cmps>
-        Id create(Cmps &&...cmps) {
-            Id id = (~alive).first();
-            alive.insert(id);
-            int unused[] = {
-                    (create_component(id, std::forward<Cmps>(cmps)), 0)...
-            };
-            (void) unused;
-            return id;
-        }
+        Entity create(Cmps &&...cmps)
+        requires(Component<std::decay_t<Cmps>> &&...);
 
         /**
-         * Erase all the components assigned to the id
-         * and mark the id as unused.
+         * Creates an entity listing all the initial components.
+         * Automatically creates archetype.
          *
-         * This method also deletes components
-         * even if they weren't initially
-         * assigned to the id by the `create` method.
+         * Lengths of types and data must be equal.
          *
-         * @note This method is kinda slow because
-         * it iterates over all storages and
-         * indirectly calling `erase` method
-         * via type-erasure.
+         * @param [in] types a list of structs describing type of each component.
+         * @param [in] data a list of raw pointers to binary data of each component.
+         * @return created entity.
+         */
+        Entity create(const std::vector<ComponentType> &types,
+                      const std::vector<void *> &data);
+
+        /**
+         * Creates an entity listing all the initial components.
+         * Automatically creates archetype.
+         *
+         * @param [in] components_count number of components.
+         * @param [in] types an array of structs describing type of each component.
+         * @param [in] data an array of raw pointers to binary data of each component.
+         * @return created entity.
+         */
+        Entity create(std::size_t components_count,
+                      const ComponentType *types,
+                      const void *const *data);
+
+        /**
+         * Creates an entity listing all the initial components.
+         * Automatically creates archetype.
+         *
+         *
+         * @param [in] entities_count number of entities to create.
+         * @param [in] components_count number of components.
+         * @param [in] types an array of structs describing type of each component.
+         * @param [in] data an array of raw pointers to arrays of binary data of each component.
+         * @param [out] entities a resulting array of created entities. Must be allocated in advance
+         *
+         * @details
+         * Overview of memory layout:
+         * @code
+         * types:
+         * |ComponentType|ComponentType|ComponentType|
+         * data:
+         * data[0] = |Component0|Component0|Component0|
+         * data[1] = |    Component1    |    Component1    |    Component1    |
+         * data[2] = |  Component2  |  Component2  |  Component2  |
+         * @endcode
+         *
+         * Length of @c data[i] should be equal @c entities_count.
+         * Length of @c data should be equal @c components_count.
+         * Length of @c types should be equal @c components_count.
+         * Length of @c entities should be equal @c entities_count.
+         *
+         */
+        void create_multiple(std::size_t entities_count,
+                             std::size_t components_count,
+                             const ComponentType *types,
+                             const void *const *data,
+                             Entity *entities);
+
+        /**
+         * Same as above but does not output @c entities.
+         */
+        void create_multiple(std::size_t entities_count,
+                             std::size_t components_count,
+                             const ComponentType *types,
+                             const void *const *data);
+
+        /**
+         * Erases all the components assigned to the entity
+         * and mark the entity as removed.
+         *
+         * @details
+         * If the archetype of the entity becomes empty,
+         * it will be automatically removed.
+         *
+         * @details
+         * Due to versioning, consecutive access by removed
+         * entity will fail even if id is in use.
          *
          * @return true if entity existed.
          */
-        bool destroy(Id id) {
-            if (!alive.contains(id))
-                return false;
-            alive.erase(id);
+        bool destroy(Entity entity);
 
-            for (auto storage : world->storages())
-                storage.erase(id);
-            return true;
+        /**
+         * Adds listed components to the entity.
+         *
+         * @details
+         * New archetype is implicitly created and
+         * the entity is transferred.
+         *
+         * @example
+         * @code
+         * entities.add_components(entity, ComponentA{}, ComponentB{});
+         * @endcode
+         */
+        template<typename... Cmps>
+        void add_components(Entity entity, Cmps &&...cmps);
+
+        /**
+         * Removes listed components from the entity.
+         *
+         * @details
+         * New archetype is implicitly created and
+         * the entity is transferred.
+         *
+         * @example
+         * @code
+         * entities.remove_components<ComponentA, ComponentB>(entity);
+         * @endcode
+         */
+        template<Component... Cmps>
+        void remove_components(Entity entity);
+
+        /**
+         * @brief
+         * Iterates over each entity that has listed components.
+         *
+         * Deduces types from the function signature.
+         * @example
+         * @code
+         * Entities.foreach([](const ComponentA &a, ComponentB &b) {
+         *     // ...
+         * });
+         * @endcode
+         *
+         * To get the entity list it as a first argument.
+         * @example
+         * @code
+         * Entities.foreach([](Entity entity, const ComponentA &a, ComponentB &b) {
+         *     // ...
+         * });
+         * @endcode
+         */
+        template<typename Fn>
+        void foreach(Fn &&fn) const {
+            foreach_functor(fn, &std::remove_cvref_t<Fn>::operator());
         }
+
+        template<typename... Cmps>
+        std::tuple<Cmps &...> get_components(Entity entity) const
+        requires(Component<std::remove_const_t<Cmps>> &&...);
 
         /**
          * Checks if entity with such id is tracked as alive.
          */
-        bool is_alive(Id id) const {
-            return alive.contains(id);
+        bool is_alive(Entity entity) const {
+            return entity.id < entries.size() &&
+                   entity.version == entries[entity.id].version;
         }
+
+        ArchetypesStorage archetypes;
 
     private:
-        World *world = nullptr;
-        IdSet alive;
+        struct Entry {
+            uint32_t next = NO_ENTRY;
+            uint32_t version = 0;
+        };
 
-        template<typename Cmp>
-        requires Component<std::remove_cvref_t<Cmp>>
-        void create_component(Id id, Cmp &&cmp) {
-            using CmpStorage = typename std::remove_cvref_t<Cmp>::Storage;
-            world->get<CmpStorage>()
-                    .insert(id, std::forward<Cmp>(cmp));
+        World *world = nullptr;
+        std::vector<Entry> entries;
+        uint32_t free_list = NO_ENTRY;
+        static constexpr uint32_t NO_ENTRY = UINT32_MAX;
+
+        template<typename Fn, typename This, typename Ret, typename... Args>
+        requires(Component<std::remove_cvref_t<Args>> &&...)
+        void foreach_functor(Fn &&functor, Ret (This::*)(Args...)) const {
+            foreach_impl<std::remove_reference_t<Args>...>(std::forward<Fn>(functor),
+                                                           std::make_index_sequence<sizeof...(Args)>());
         }
+
+        template<typename Fn, typename This, typename Ret, typename... Args>
+        requires(Component<std::remove_cvref_t<Args>> &&...)
+        void foreach_functor(Fn &&functor, Ret (This::*)(Args...) const) const {
+            foreach_impl<std::remove_reference_t<Args>...>(std::forward<Fn>(functor),
+                                                           std::make_index_sequence<sizeof...(Args)>());
+        }
+
+        template<typename Fn, typename This, typename Ret, typename... Args>
+        requires(Component<std::remove_cvref_t<Args>> &&...)
+        void foreach_functor(Fn &&functor, Ret (This::*)(Entity, Args...)) const {
+            foreach_with_entities_impl<std::remove_reference_t<Args>...>(std::forward<Fn>(functor),
+                                                                         std::make_index_sequence<sizeof...(Args)>());
+        }
+
+        template<typename Fn, typename This, typename Ret, typename... Args>
+        requires(Component<std::remove_cvref_t<Args>> &&...)
+        void foreach_functor(Fn &&functor, Ret (This::*)(Entity, Args...) const) const {
+            foreach_with_entities_impl<std::remove_reference_t<Args>...>(std::forward<Fn>(functor),
+                                                                         std::make_index_sequence<sizeof...(Args)>());
+        }
+
+        template<typename... Cmps, typename Fn, std::size_t... Indices>
+        void foreach_impl(Fn &&f, std::index_sequence<Indices...> indices) const;
+
+        template<typename... Cmps, typename Fn, std::size_t... Indices>
+        void foreach_with_entities_impl(Fn &&f, std::index_sequence<Indices...> indices) const;
     };
 }
+
+#include "ecs/detail/entities_impl.h"
 
 #endif //HIGH_SHIFT_ENTITIES_H

@@ -4,7 +4,7 @@
 
 #include <climits>
 
-TEST_SUITE("ecs/storages/IdSet") {
+TEST_SUITE("ecs::IdSet") {
     TEST_CASE("empty") {
         ecs::IdSet set;
         CHECK(set.size() == 0);
@@ -97,15 +97,6 @@ TEST_SUITE("ecs/storages/IdSet") {
             CHECK(set.contains(id3));
             CHECK(set.size() == 3);
         }
-
-        SUBCASE("erase returns next iterator") {
-            auto it = set.erase(set.begin());
-            CHECK(*it == id2);
-            CHECK(set.size() == 2);
-            it = set.erase(set.begin());
-            CHECK(*it == id3);
-            CHECK(set.size() == 1);
-        }
     }
 
     TEST_CASE("clear") {
@@ -120,7 +111,6 @@ TEST_SUITE("ecs/storages/IdSet") {
         set.clear();
         CHECK(set.size() == 0);
         CHECK(set.empty());
-        CHECK(set.begin() == set.end());
     }
 
     TEST_CASE("iterator") {
@@ -133,8 +123,9 @@ TEST_SUITE("ecs/storages/IdSet") {
 
         SUBCASE("go through") {
             std::size_t i = 0;
-            for (auto id = set.begin(); id != set.end(); ++id, ++i)
-                CHECK(ids[i] == *id);
+            ecs::foreach(set, [&](ecs::Id id) {
+                CHECK(ids[i++] == id);
+            });
             CHECK(i == ids_n);
         }
 
@@ -143,18 +134,21 @@ TEST_SUITE("ecs/storages/IdSet") {
             set.erase(ids[removed_idx]);
 
             std::size_t i = 0;
-            for (auto id = set.begin(); id != set.end(); ++id, ++i)
+            ecs::foreach(set, [&](ecs::Id id) {
                 if (i < removed_idx)
-                    CHECK(ids[i] == *id);
+                    CHECK(ids[i] == id);
                 else
-                    CHECK(ids[i + 1] == *id);
+                    CHECK(ids[i + 1] == id);
+                ++i;
+            });
             CHECK(i == ids_n - 1);
 
             set.insert(ids[removed_idx]);
             SUBCASE("insert again") {
                 i = 0;
-                for (auto id = set.begin(); id != set.end(); ++id, ++i)
-                    CHECK(ids[i] == *id);
+                ecs::foreach(set, [&](ecs::Id id) {
+                    CHECK(ids[i++] == id);
+                });
                 CHECK(i == ids_n);
             }
         }
@@ -182,8 +176,9 @@ TEST_SUITE("ecs/storages/IdSet") {
 
         SUBCASE("iteration") {
             std::size_t i = 0;
-            for (ecs::Id id : (a & b))
+            ecs::foreach(a & b, [&](ecs::Id id) {
                 CHECK(ids_c[i++] == id);
+            });
             CHECK(i == ids_n);
         }
     }
@@ -212,8 +207,9 @@ TEST_SUITE("ecs/storages/IdSet") {
 
         SUBCASE("iteration") {
             std::size_t i = 0;
-            for (ecs::Id id : c)
+            ecs::foreach(c, [&](ecs::Id id) {
                 CHECK(ids_c[i++] == id);
+            });
             CHECK(i == ids_n);
         }
     }
@@ -231,8 +227,9 @@ TEST_SUITE("ecs/storages/IdSet") {
             ecs::IdSet other(set);
 
             std::size_t i = 0;
-            for (ecs::Id id : other)
+            ecs::foreach(other, [&](ecs::Id id) {
                 CHECK(ids[i++] == id);
+            });
             CHECK(i == ids_n);
 
             CHECK(set.capacity() == other.capacity());
@@ -243,8 +240,9 @@ TEST_SUITE("ecs/storages/IdSet") {
             ecs::IdSet other(std::move(set));
 
             std::size_t i = 0;
-            for (ecs::Id id : other)
+            ecs::foreach(other, [&](ecs::Id id) {
                 CHECK(ids[i++] == id);
+            });
             CHECK(i == ids_n);
         }
 
@@ -264,8 +262,9 @@ TEST_SUITE("ecs/storages/IdSet") {
             }
 
             std::size_t i = 0;
-            for (ecs::Id id : other)
+            ecs::foreach(other, [&](ecs::Id id) {
                 CHECK(ids[i++] == id);
+            });
             CHECK(i == ids_n);
         }
     }

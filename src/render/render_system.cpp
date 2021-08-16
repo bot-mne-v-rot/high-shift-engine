@@ -68,23 +68,19 @@ namespace render {
         void update(const ShaderLoader &shader_loader,
                     const TextureLoader &texture_loader,
                     const ModelLoader &model_loader,
-                    const MeshRenderer::Storage &renderers,
-                    const Transform::Storage &transforms,
-                    const Camera::Storage &cameras,
-                    const DirLight::Storage &dir_lights,
-                    const PointLight::Storage &point_lights,
-                    const SpotLight::Storage &spot_lights) {
+                    const ecs::Entities &entities) {
+
             glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-            ecs::joined_foreach(transforms, cameras, [&](const Transform &cam_transform, const Camera &camera) {
+            entities.foreach([&](const Transform &cam_transform, const Camera &camera) {
                 glm::mat4 projection = camera.projection;
 
                 glm::mat4 view = glm::mat4(1.0f);
                 view = glm::translate(view, -cam_transform.position);
                 view = glm::toMat4(glm::inverse(cam_transform.rotation)) * view;
 
-                ecs::joined_foreach(transforms, renderers, [&](const Transform &ent_transform,
+                entities.foreach([&](const Transform &ent_transform,
                                                                const MeshRenderer &renderer) {
                     glm::mat4 local_to_world = glm::mat4(1.0f);
                     local_to_world = glm::translate(local_to_world, ent_transform.position);
@@ -166,13 +162,8 @@ namespace render {
     void RenderSystem::update(const ShaderLoader &shader_loader,
                               const TextureLoader &texture_loader,
                               const ModelLoader &model_loader,
-                              const MeshRenderer::Storage &renderers,
-                              const Transform::Storage &transforms,
-                              const Camera::Storage &cameras,
-                              const DirLight::Storage &dir_lights,
-                              const PointLight::Storage &point_lights,
-                              const SpotLight::Storage &spot_lights) {
-        impl->update(shader_loader, texture_loader, model_loader, renderers, transforms, cameras, dir_lights, point_lights, spot_lights);
+                              const ecs::Entities &entities) {
+        impl->update(shader_loader, texture_loader, model_loader, entities);
     }
 
     void RenderSystem::teardown(ecs::World &world) {

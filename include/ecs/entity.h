@@ -7,6 +7,10 @@ namespace ecs {
     using Id = uint32_t;
     struct Entity {
         Id id;
+        uint32_t version;
+
+        bool operator==(const Entity &) const = default;
+        bool operator!=(const Entity &) const = default;
     };
 }
 

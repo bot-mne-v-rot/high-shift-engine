@@ -5,6 +5,7 @@
 #include "ecs/component.h"
 #include "ecs/entity.h"
 #include "ecs/id_set.h"
+#include "ecs/chunk_layout.h"
 
 #include <vector>
 
@@ -82,10 +83,8 @@ namespace ecs {
     public:
         Archetype(std::vector<ComponentType> component_types,
                   EntityChunkMapping *entity_chunk_mapping)
-                : _component_types(std::move(component_types)),
-                  entities_mapping(entity_chunk_mapping) {
-            calculate_capacity();
-        }
+                : _layout(std::move(component_types)),
+                  entities_mapping(entity_chunk_mapping) {}
 
         ~Archetype();
 
@@ -111,23 +110,23 @@ namespace ecs {
         }
 
         std::size_t components_count() const {
-            return _component_types.size();
+            return _layout.components_count();
         }
 
         const std::vector<ComponentType> &component_types() const {
-            return _component_types;
+            return _layout.component_types();
         }
 
         const std::vector<std::size_t> &component_offsets() const {
-            return _component_offsets;
+            return _layout.component_offsets();
         }
 
         std::size_t chunk_capacity() const {
-            return _chunk_capacity;
+            return _layout.chunk_capacity();
         }
 
         std::size_t entities_offset() const {
-            return _entities_offset;
+            return _layout.entities_offset();
         }
 
         std::size_t entities_count() const {
@@ -139,13 +138,11 @@ namespace ecs {
         }
 
         Entity get_entity(EntityPosInChunk pos) const {
-            auto *entities = (const Entity *) (_chunks[pos.chunk_index].data + _entities_offset);
-            return entities[pos.index_in_chunk];
+            return _layout.get_entities(_chunks[pos.chunk_index])[pos.index_in_chunk];
         }
 
         void *get_component(EntityPosInChunk pos, std::size_t comp_index) {
-            return _chunks[pos.chunk_index].data + _component_offsets[comp_index]
-                   + pos.index_in_chunk * _component_types[comp_index].array_offset;
+            return _layout.get_component(_chunks[pos.chunk_index], comp_index, pos.index_in_chunk);
         }
 
     private:
@@ -153,17 +150,11 @@ namespace ecs {
         std::size_t _chunks_count = 0;
         std::size_t _chunks_cp = 0;
 
-        std::vector<ComponentType> _component_types;
-        std::vector<std::size_t> _component_offsets;
+        ChunkLayout _layout;
         EntityChunkMapping *entities_mapping;
 
-        std::size_t _entities_offset;
-        std::size_t _chunk_capacity;
         std::size_t _last_chunk_free_slots = 0;
         std::size_t _entities_count = 0;
-
-        void calculate_capacity();
-        std::size_t calculate_offsets();
 
         void reserve_chunks(std::size_t count);
         void allocate_chunk();
@@ -186,13 +177,13 @@ namespace ecs {
         IdSet component_masks[max_components];
 
         template<Component... Cs, typename Fn>
-        void query(Fn &&f) const {
+        void foreach(Fn &&f) const {
             ComponentType types[] {
                     ComponentType::create<Cs>()...
             };
             DynamicIdSetAnd sets_and = query_mask(sizeof...(Cs), types);
 
-            foreach(sets_and, [&](Id id) {
+            ecs::foreach(sets_and, [&](Id id) {
                 f(storage[id].get());
             });
         }

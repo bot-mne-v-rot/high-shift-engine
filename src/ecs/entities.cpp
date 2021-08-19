@@ -3,20 +3,6 @@
 #include <immintrin.h>
 
 namespace ecs {
-    void fast_memcpy(void *pvDest, void *pvSrc, size_t nBytes) {
-        assert(nBytes % 32 == 0);
-        assert((intptr_t(pvDest) & 31) == 0);
-        assert((intptr_t(pvSrc) & 31) == 0);
-        const __m256i *pSrc = reinterpret_cast<const __m256i *>(pvSrc);
-        __m256i *pDest = reinterpret_cast<__m256i *>(pvDest);
-        int64_t nVects = nBytes / sizeof(*pSrc);
-        for (; nVects > 0; nVects--, pSrc++, pDest++) {
-            const __m256i loaded = _mm256_stream_load_si256(pSrc);
-            _mm256_stream_si256(pDest, loaded);
-        }
-        _mm_sfence();
-    }
-
 
     Entity Entities::create(const std::vector<ComponentType> &types, const std::vector<void *> &data) {
         assert(types.size() == data.size());
@@ -26,17 +12,7 @@ namespace ecs {
     Entity Entities::create(std::size_t components_count,
                             const ComponentType *types,
                             const void *const *data) {
-        if (free_list == NO_ENTRY) {
-            entries.emplace_back();
-            free_list = entries.size() - 1;
-        }
-
-        Entry &entry = entries[free_list];
-        Entity entity{
-                .id = free_list,
-                .version = entry.version
-        };
-        free_list = entry.next;
+        Entity entity = get_free_entity();
 
         Archetype *arch = archetypes.get_or_insert(components_count, types);
         EntityPosInChunk entity_pos = arch->allocate_entity(entity);
@@ -60,27 +36,7 @@ namespace ecs {
                                    const ComponentType *types,
                                    const void *const *data,
                                    Entity *entities) {
-        std::size_t created = 0;
-        while (created < entities_count && free_list != NO_ENTRY) {
-            Entry &entry = entries[free_list];
-            entities[created] = Entity{
-                    .id = free_list,
-                    .version = entry.version
-            };
-
-            free_list = entry.next;
-            ++created;
-        }
-
-        entries.reserve(std::max(2 * entries.size(), entries.size() + entities_count - created));
-        while (created < entities_count) {
-            entries.emplace_back();
-            entities[created] = Entity{
-                    .id = (Id) (entries.size() - 1),
-                    .version = entries.back().version
-            };
-            ++created;
-        }
+        get_free_entities(entities_count, entities);
 
         Archetype *arch = archetypes.get_or_insert(components_count, types);
 
@@ -102,6 +58,7 @@ namespace ecs {
             }
         };
 
+        // first chunk
         std::size_t chunk_capacity = arch->chunk_capacity();
         if (entities_count) {
             std::size_t in_first_chunk = std::min(entities_count, chunk_capacity - starting_pos.index_in_chunk);
@@ -112,6 +69,7 @@ namespace ecs {
             ++starting_pos.chunk_index;
         }
 
+        // intermediate chunks
         std::size_t chunks = (entities_count - filled) / chunk_capacity;
         while (chunks) {
             fill_chunk(chunk_capacity);
@@ -121,6 +79,7 @@ namespace ecs {
             --chunks;
         }
 
+        // last chunk
         if (entities_count - filled) {
             std::size_t in_last_chunk = entities_count - filled;
             fill_chunk(in_last_chunk);
@@ -140,10 +99,7 @@ namespace ecs {
         if (!is_alive(entity))
             return false;
 
-        auto &entry = entries[entity.id];
-        entry.next = free_list;
-        free_list = entity.id;
-        ++entry.version;
+        push_free_list(entity);
 
         EntityChunkMapping &mapping = *archetypes.entities_mapping();
         EntityPosInChunk entity_pos = mapping[entity.id];
@@ -153,5 +109,49 @@ namespace ecs {
             archetypes.erase(entity_pos.archetype);
 
         return true;
+    }
+
+    void Entities::get_free_entities(std::size_t entities_count, Entity *entities) {
+        std::size_t created = 0;
+        while (created < entities_count && free_list != NO_ENTRY) {
+            entities[created] = pop_free_list();
+            ++created;
+        }
+
+        entries.reserve(entries.size() + entities_count - created);
+        while (created < entities_count) {
+            entries.emplace_back();
+            entities[created] = Entity{
+                .id = (Id) (entries.size() - 1),
+                .version = 0
+            };
+            ++created;
+        }
+    }
+
+    Entity Entities::get_free_entity() {
+        if (free_list == NO_ENTRY) {
+            entries.emplace_back();
+            free_list = entries.size() - 1;
+        }
+
+        return pop_free_list();
+    }
+
+    Entity Entities::pop_free_list() {
+        Entry &entry = entries[free_list];
+        Entity entity{
+            .id = free_list,
+            .version = entry.version
+        };
+        free_list = entry.next;
+        return entity;
+    }
+
+    void Entities::push_free_list(Entity entity) {
+        auto &entry = entries[entity.id];
+        entry.next = free_list;
+        free_list = entity.id;
+        ++entry.version;
     }
 }

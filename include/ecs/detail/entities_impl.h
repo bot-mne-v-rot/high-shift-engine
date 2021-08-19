@@ -144,7 +144,7 @@ namespace ecs {
 
     template<typename... Cmps, typename Fn, std::size_t... Indices>
     void Entities::foreach_impl(Fn &&f, std::index_sequence<Indices...> indices) const {
-        archetypes.query<std::remove_const_t<Cmps>...>([&](Archetype *arch) {
+        archetypes.foreach<std::remove_const_t<Cmps>...>([&](Archetype *arch) {
             std::size_t comp_indices[] = {
                     detail::get_component_index_in_archetype<std::remove_const_t<Cmps>>(arch)...
             };
@@ -173,7 +173,7 @@ namespace ecs {
 
     template<typename... Cmps, typename Fn, std::size_t... Indices>
     void Entities::foreach_with_entities_impl(Fn &&f, std::index_sequence<Indices...> indices) const {
-        archetypes.query<std::remove_const_t<Cmps>...>([&](Archetype *arch) {
+        archetypes.foreach<std::remove_const_t<Cmps>...>([&](Archetype *arch) {
             std::size_t comp_indices[] = {
                     detail::get_component_index_in_archetype<std::remove_const_t<Cmps>>(arch)...
             };

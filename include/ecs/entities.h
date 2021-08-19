@@ -5,6 +5,7 @@
 #include "ecs/archetype.h"
 #include "ecs/component.h"
 #include "ecs/id_set.h"
+#include "ecs/chunk_layout.h"
 
 namespace ecs {
 
@@ -232,6 +233,12 @@ namespace ecs {
 
         template<typename... Cmps, typename Fn, std::size_t... Indices>
         void foreach_with_entities_impl(Fn &&f, std::index_sequence<Indices...> indices) const;
+
+        Entity get_free_entity();
+        void get_free_entities(std::size_t entities_count, Entity *entities);
+
+        Entity pop_free_list();
+        void push_free_list(Entity entity);
     };
 }
 

@@ -7,8 +7,7 @@ set(${CMAKE_CXX_FLAGS} "${CMAKE_CXX_FLAGS} -fno-exceptions")
 set(LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib")
 set(UNIVERSAL_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib")
 
-add_definitions(-mmmx -msse -msse2 -msse3 -mssse3 -msse4.1 -msse4.2 -mpopcnt -mavx -mfma -mavx2)
-
+#add_definitions(-mmmx -msse -msse2 -msse3 -mssse3 -msse4.1 -msse4.2 -mpopcnt -mavx -mfma -mavx2)
 
 # Target
 set(TEST_TARGET tests)

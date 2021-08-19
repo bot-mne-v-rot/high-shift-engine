@@ -15,19 +15,8 @@ namespace ecs {
         Entity entity = get_free_entity();
 
         Archetype *arch = archetypes.get_or_insert(components_count, types);
-        EntityPosInChunk entity_pos = arch->allocate_entity(entity);
 
-        for (std::size_t i = 0; i < components_count; ++i) {
-            const ComponentType &type = types[i];
-            const void *bytes = data[i];
-
-            std::size_t comp_index =
-                    detail::get_component_index_in_archetype(entity_pos.archetype, type);
-
-            memcpy(entity_pos.archetype->get_component(entity_pos, comp_index),
-                   bytes, type.size);
-        }
-
+        arch->allocate_entities(1, components_count, types, data, &entity);
         return entity;
     }
 
@@ -39,51 +28,8 @@ namespace ecs {
         get_free_entities(entities_count, entities);
 
         Archetype *arch = archetypes.get_or_insert(components_count, types);
-
-        std::vector<std::size_t> comp_indices(components_count);
-        for (std::size_t i = 0; i < components_count; ++i)
-            comp_indices[i] = detail::get_component_index_in_archetype(arch, types[i]);
-
-        EntityPosInChunk starting_pos = arch->allocate_entities(entities_count, entities);
-        std::size_t filled = 0;
-
-        auto fill_chunk = [&](std::size_t count) {
-            for (std::size_t i = 0; i < components_count; ++i) {
-                // assume count is not zero
-                std::size_t bytes_to_copy = (count - 1) * (types[i].array_offset) + types[i].size;
-
-                void *src = (uint8_t *) data[i] + filled * (types[i].array_offset);
-                void *dst = arch->get_component(starting_pos, comp_indices[i]);
-                memcpy(dst, src, bytes_to_copy);
-            }
-        };
-
-        // first chunk
-        std::size_t chunk_capacity = arch->chunk_capacity();
-        if (entities_count) {
-            std::size_t in_first_chunk = std::min(entities_count, chunk_capacity - starting_pos.index_in_chunk);
-            fill_chunk(in_first_chunk);
-
-            filled += in_first_chunk;
-            starting_pos.index_in_chunk = 0;
-            ++starting_pos.chunk_index;
-        }
-
-        // intermediate chunks
-        std::size_t chunks = (entities_count - filled) / chunk_capacity;
-        while (chunks) {
-            fill_chunk(chunk_capacity);
-
-            ++starting_pos.chunk_index;
-            filled += chunk_capacity;
-            --chunks;
-        }
-
-        // last chunk
-        if (entities_count - filled) {
-            std::size_t in_last_chunk = entities_count - filled;
-            fill_chunk(in_last_chunk);
-        }
+        arch->allocate_entities(entities_count, components_count,
+                                types, data, entities);
     }
 
     void Entities::create_multiple(std::size_t entities_count,

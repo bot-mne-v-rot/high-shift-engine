@@ -95,7 +95,11 @@ namespace ecs {
          * Efficiently allocates entities in a row.
          * @return position of the first allocated entity.
          */
-        EntityPosInChunk allocate_entities(std::size_t entities_count, const Entity *entities);
+        void allocate_entities(std::size_t entities_count,
+                               std::size_t components_count,
+                               const ComponentType *types,
+                               const void *const *data,
+                               const Entity *entities);
 
         Chunk *chunks() {
             return _chunks;
@@ -178,7 +182,7 @@ namespace ecs {
 
         template<Component... Cs, typename Fn>
         void foreach(Fn &&f) const {
-            ComponentType types[] {
+            ComponentType types[]{
                     ComponentType::create<Cs>()...
             };
             DynamicIdSetAnd sets_and = query_mask(sizeof...(Cs), types);

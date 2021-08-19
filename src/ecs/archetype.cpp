@@ -86,7 +86,14 @@ namespace ecs {
      * It is guaranteed that entities are allocated in the same order
      * as given in the input.
      */
-    EntityPosInChunk Archetype::allocate_entities(std::size_t entities_count, const Entity *entities) {
+    void Archetype::allocate_entities(std::size_t entities_count,
+                                      std::size_t components_count,
+                                      const ComponentType *types,
+                                      const void *const *data,
+                                      const Entity *entities) {
+        if (entities_count == 0)
+            return;
+
         if (_last_chunk_free_slots == 0)
             allocate_chunk();
 
@@ -97,46 +104,60 @@ namespace ecs {
         entity_pos.chunk_index = _chunks_count - 1;
         entity_pos.index_in_chunk = chunk_capacity() - _last_chunk_free_slots;
 
+        std::vector<std::size_t> comp_indices(components_count);
+        _layout.get_component_indices(components_count, types, comp_indices.data());
+
         Id max_id = 0;
         for (std::size_t i = 0; i < entities_count; ++i)
             max_id = std::max(max_id, entities[i].id);
         entities_mapping->reserve(max_id, entities_count);
 
-        auto allocate_in_chunk = [&](std::size_t count, EntityPosInChunk starting_pos) {
-            auto *chunk_entities = _layout.get_entities(_chunks[_chunks_count - 1]);
-            memcpy(chunk_entities + entity_pos.index_in_chunk, entities, count * sizeof(Entity));
+        EntityPosInChunk starting_pos = entity_pos;
+        std::size_t filled = 0;
 
-            entities_mapping->insert_multiple(count, entities, entity_pos);
+        auto fill_chunk = [&](std::size_t count) {
+            for (std::size_t i = 0; i < components_count; ++i) {
+                // assume count is not zero
+                std::size_t bytes_to_copy = (count - 1) * (types[i].array_offset) + types[i].size;
+                void *src = (uint8_t *) data[i] + filled * (types[i].array_offset);
+                void *dst = get_component(starting_pos, comp_indices[i]);
+                memcpy(dst, src, bytes_to_copy);
+            }
 
-            entities_count -= count;
-            entities += count;
+            memcpy(_layout.get_entities(_chunks[starting_pos.chunk_index]) + starting_pos.index_in_chunk,
+                   entities + filled, count * sizeof(Entity));
+            entities_mapping->insert_multiple(count, entities + filled, starting_pos);
             _last_chunk_free_slots -= count;
         };
 
         // first chunk
-        EntityPosInChunk starting_pos = entity_pos;
+        std::size_t chunk_capacity = _layout.chunk_capacity();
         std::size_t in_first_chunk = std::min(entities_count, _last_chunk_free_slots);
-        allocate_in_chunk(in_first_chunk, starting_pos);
+        if (in_first_chunk) {
+            fill_chunk(in_first_chunk);
+
+            filled += in_first_chunk;
+            starting_pos.index_in_chunk = 0;
+            ++starting_pos.chunk_index;
+        }
 
         // intermediate chunks
-        std::size_t chunks = entities_count / chunk_capacity();
-        reserve_chunks(chunks);
-        starting_pos.index_in_chunk = 0;
-        for (std::size_t i = 0; i < chunks; ++i) {
+        std::size_t chunks = (entities_count - filled) / chunk_capacity;
+        while (chunks) {
             allocate_chunk();
+            fill_chunk(chunk_capacity);
+
             ++starting_pos.chunk_index;
-            allocate_in_chunk(chunk_capacity(), starting_pos);
+            filled += chunk_capacity;
+            --chunks;
         }
 
         // last chunk
-        if (entities_count) {
+        std::size_t in_last_chunk = entities_count - filled;
+        if (in_last_chunk) {
             allocate_chunk();
-            ++starting_pos.chunk_index;
-            std::size_t in_last_chunk = entities_count;
-            allocate_in_chunk(in_last_chunk, starting_pos);
+            fill_chunk(in_last_chunk);
         }
-
-        return entity_pos;
     }
 
     void Archetype::deallocate_entity(EntityPosInChunk entity_pos) {

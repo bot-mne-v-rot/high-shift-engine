@@ -79,6 +79,26 @@ namespace ecs {
             return get_component_array<T>(chunk, comp_index)[index_in_chunk];
         }
 
+        std::size_t get_component_index(const ComponentType &type) {
+            std::size_t comps_count = components_count();
+            for (std::size_t i = 0; i < comps_count; ++i)
+                if (_component_types[i] == type)
+                    return i;
+            return comps_count;
+        }
+
+        template<Component C>
+        std::size_t get_component_index() {
+            return get_component_index(ComponentType::create<C>());
+        }
+
+        void get_component_indices(std::size_t types_count,
+                                   const ComponentType *types,
+                                   std::size_t *indices) {
+            for (std::size_t i = 0; i < types_count; ++i)
+                indices[i] = get_component_index(types[i]);
+        }
+
     private:
         std::vector<ComponentType> _component_types;
         std::vector<std::size_t> _component_offsets;

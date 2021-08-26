@@ -4,7 +4,7 @@
 
 namespace ecs {
 
-    Entity Entities::create(const std::vector<ComponentType> &types, const std::vector<void *> &data) {
+    Entity Entities::create(const std::vector <ComponentType> &types, const std::vector<void *> &data) {
         assert(types.size() == data.size());
         return create(types.size(), types.data(), data.data());
     }
@@ -12,11 +12,8 @@ namespace ecs {
     Entity Entities::create(std::size_t components_count,
                             const ComponentType *types,
                             const void *const *data) {
-        Entity entity = get_free_entity();
-
-        Archetype *arch = archetypes.get_or_insert(components_count, types);
-
-        arch->allocate_entities(1, components_count, types, data, &entity);
+        Entity entity;
+        create_multiple(1, components_count, types, data, &entity);
         return entity;
     }
 
@@ -28,8 +25,15 @@ namespace ecs {
         get_free_entities(entities_count, entities);
 
         Archetype *arch = archetypes.get_or_insert(components_count, types);
-        arch->allocate_entities(entities_count, components_count,
-                                types, data, entities);
+        ComponentsData components {
+            components_count, types, data
+        };
+
+        SharedComponentsData shared_components {
+            .components_count = 0
+        };
+
+        arch->allocate_entities(entities_count, components, shared_components, entities);
     }
 
     void Entities::create_multiple(std::size_t entities_count,
@@ -68,8 +72,8 @@ namespace ecs {
         while (created < entities_count) {
             entries.emplace_back();
             entities[created] = Entity{
-                .id = (Id) (entries.size() - 1),
-                .version = 0
+                    .id = (Id)(entries.size() - 1),
+                    .version = 0
             };
             ++created;
         }
@@ -87,8 +91,8 @@ namespace ecs {
     Entity Entities::pop_free_list() {
         Entry &entry = entries[free_list];
         Entity entity{
-            .id = free_list,
-            .version = entry.version
+                .id = free_list,
+                .version = entry.version
         };
         free_list = entry.next;
         return entity;

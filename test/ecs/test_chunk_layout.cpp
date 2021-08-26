@@ -11,7 +11,7 @@ TEST_SUITE("ecs::ChunkLayout") {
             layout = new ecs::ChunkLayout(
                     {
                             ecs::ComponentType::create<Position>()
-                    });
+                    }, {});
             CHECK(layout->chunk_capacity() <= ecs::chunk_size / sizeof(Position));
         }
         SUBCASE("cache lines") {
@@ -19,7 +19,7 @@ TEST_SUITE("ecs::ChunkLayout") {
                     {
                             ecs::ComponentType::create<CacheLineAligned1>(),
                             ecs::ComponentType::create<CacheLineAligned2>(),
-                    });
+                    }, {});
         }
         SUBCASE("complex") {
             layout = new ecs::ChunkLayout(
@@ -28,7 +28,7 @@ TEST_SUITE("ecs::ChunkLayout") {
                             ecs::ComponentType::create<CacheLineAligned1>(),
                             ecs::ComponentType::create<CacheLineAligned2>(),
                             ecs::ComponentType::create<SomeComponent>()
-                    });
+                    }, {});
         }
 
         auto &component_types = layout->component_types();
@@ -42,10 +42,18 @@ TEST_SUITE("ecs::ChunkLayout") {
         std::size_t capacity_upper_bound = ecs::chunk_size / size_sum;
         CHECK(chunk_capacity <= capacity_upper_bound);
 
-        for (std::size_t i = 0; i < components_count; ++i) {
+        {
+            std::size_t arr_size = sizeof(ecs::Entity) * chunk_capacity;
+            CHECK(component_offsets[0] >= layout->entities_offset() + arr_size);
+            CHECK(component_offsets[0] % component_types[0].align == 0);
+            CHECK(layout->entities_offset() >= sizeof(ecs::Chunk::Fields));
+        }
+        for (std::size_t i = 1; i < components_count; ++i) {
             CHECK(component_offsets[i] % component_types[i].align == 0);
-            if (i > 0)
-                CHECK(component_offsets[i] >= component_offsets[i - 1]);
+            std::size_t arr_size =
+                    component_types[i - 1].array_offset * (chunk_capacity - 1)
+                    + component_types[i - 1].size;
+            CHECK(component_offsets[i] >= component_offsets[i - 1] + arr_size);
         }
 
         delete layout;

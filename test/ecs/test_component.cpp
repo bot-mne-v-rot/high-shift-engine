@@ -38,7 +38,7 @@ TEST_SUITE("ecs::ComponentType") {
     TEST_CASE("create") {
         ecs::ComponentType type;
         std::size_t size, align;
-        ecs::CmpId id;
+        ecs::CompId id;
 
         SUBCASE("CacheLineAligned1") {
             type = ecs::ComponentType::create<CacheLineAligned1>();

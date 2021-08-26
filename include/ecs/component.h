@@ -10,15 +10,16 @@ namespace ecs {
     struct ComponentTag {};
     struct SharedComponentTag {};
     struct ChunkComponentTag {};
+    struct MarkerComponentTag {};
 
     template<typename T>
     struct ComponentTraits {
     private:
         template<typename>
-        static ComponentTag tag_impl(...) {}
+        static ComponentTag tag_impl(...);
 
         template<typename Q>
-        static typename Q::Tag tag_impl(int) {}
+        static typename Q::Tag tag_impl(int);
 
     public:
         using Tag = decltype(tag_impl<T>(0));
@@ -50,18 +51,19 @@ namespace ecs {
         requires std::is_same_v<typename ComponentTraits<C>::Tag, ChunkComponentTag>;
     };
 
-    using CmpId = uint16_t;
+    using CompId = uint16_t;
+    using ShCompVal = uint32_t;
 
     namespace detail {
-        inline CmpId _get_component_id() {
-            static CmpId id = 0;
+        inline CompId _get_component_id() {
+            static CompId id = 0;
             return ++id;
         }
     }
 
     template<typename>
-    inline CmpId get_component_id() {
-        static CmpId id = detail::_get_component_id();
+    inline CompId get_component_id() {
+        static CompId id = detail::_get_component_id();
         return id;
     }
 
@@ -69,7 +71,7 @@ namespace ecs {
         std::size_t size;
         std::size_t align;
         std::size_t array_offset;
-        CmpId id;
+        CompId id;
 
         template<Component C>
         static ComponentType create() {
@@ -85,8 +87,13 @@ namespace ecs {
             };
         }
 
-        bool operator==(const ComponentType &) const = default;
-        bool operator!=(const ComponentType &) const = default;
+        bool operator==(const ComponentType &other) const {
+            return id == other.id;
+        }
+
+        bool operator!=(const ComponentType &other) const {
+            return id != other.id;
+        }
     };
 }
 

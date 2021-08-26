@@ -2,6 +2,7 @@
 #define HIGH_SHIFT_UTILS_H
 
 #include <tuple>
+#include <type_traits>
 
 namespace ecs::detail {
     template<typename F, std::size_t I = 0, typename... Ts>
@@ -34,6 +35,30 @@ namespace ecs::detail {
                 tuple_for_each_n<FnFail, I>(tup, std::forward<FnFail>(fail));
         }
     }
+
+    template<class M, class Key>
+    typename M::mapped_type &
+    get_else_update(M &m, Key const &k, typename M::mapped_type const &v) {
+        return m.insert(typename M::value_type(k, v)).first->second;
+    }
+
+    template <typename, typename> struct Cons;
+
+    template <typename  T, typename... Args>
+    struct Cons<T, std::tuple<Args...>> {
+        using type = std::tuple<T, Args...>;
+    };
+
+    template <template<typename> class Predicate, typename...> struct filter;
+    template <template<typename> class Predicate> struct filter<Predicate> { using type = std::tuple<>; };
+
+    template <template<typename> class Predicate, typename Head, typename... Tail>
+    struct filter<Predicate, Head, Tail...> {
+        using type = typename std::conditional<Predicate<Head>::value,
+            typename Cons<Head, typename filter<Predicate, Tail...>::type>::type,
+            typename filter<Predicate, Tail...>::type
+        >::type;
+    };
 }
 
 #endif //HIGH_SHIFT_UTILS_H

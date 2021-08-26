@@ -6,6 +6,8 @@
 #include "ecs/entity.h"
 #include "ecs/id_set.h"
 #include "ecs/chunk_layout.h"
+#include "ecs/chunks_data.h"
+#include "ecs/chunks_map.h"
 
 #include <vector>
 
@@ -14,7 +16,7 @@ namespace ecs {
 
     struct EntityPosInChunk {
         Archetype *archetype;
-        uint32_t chunk_index;
+        Chunk *chunk;
         uint16_t index_in_chunk;
 
         bool operator==(const EntityPosInChunk &) const = default;
@@ -38,12 +40,12 @@ namespace ecs {
 
         /**
          * Same as insert but does not perform checking if id is
-         * present.
+         * present. Does not perform auto memory allocations.
          */
         void insert_unsafe(Id id, EntityPosInChunk entity_pos);
 
         /**
-         * Same as insert_unsafe but for multiple entities.
+         * Same as insert but for multiple entities.
          * Does not perform version checking.
          * Does not perform auto memory allocations.
          *
@@ -79,38 +81,49 @@ namespace ecs {
         IdSet present;
     };
 
+    struct ComponentsData {
+        std::size_t components_count;
+        const ComponentType *types;
+        const void *const *data;
+    };
+
+    struct SharedComponentsData {
+        std::size_t components_count;
+        const ComponentType *types;
+        const ShCompVal *data;
+    };
+
     class Archetype {
     public:
         Archetype(std::vector<ComponentType> component_types,
+                  std::vector<ComponentType> shared_component_types,
                   EntityChunkMapping *entity_chunk_mapping)
-                : _layout(std::move(component_types)),
-                  entities_mapping(entity_chunk_mapping) {}
-
-        ~Archetype();
+                : _layout(std::move(component_types),
+                          std::move(shared_component_types)),
+                  entities_mapping(entity_chunk_mapping),
+                  _chunks_data(0) {}
 
         EntityPosInChunk allocate_entity(Entity entity);
         void deallocate_entity(EntityPosInChunk entity_pos);
 
         /**
          * Efficiently allocates entities in a row.
-         * @return position of the first allocated entity.
          */
         void allocate_entities(std::size_t entities_count,
-                               std::size_t components_count,
-                               const ComponentType *types,
-                               const void *const *data,
+                               ComponentsData components,
+                               SharedComponentsData shared_components,
                                const Entity *entities);
 
-        Chunk *chunks() {
-            return _chunks;
+        Chunk **chunks() {
+            return _chunks_data.chunks_ptr();
         }
 
-        const Chunk *chunks() const {
-            return _chunks;
+        const Chunk *const *chunks() const {
+            return _chunks_data.chunks_ptr();
         }
 
         std::size_t chunks_count() const {
-            return _chunks_count;
+            return _chunks_data.chunks_count();
         }
 
         std::size_t components_count() const {
@@ -121,51 +134,48 @@ namespace ecs {
             return _layout.component_types();
         }
 
-        const std::vector<std::size_t> &component_offsets() const {
-            return _layout.component_offsets();
+        std::size_t shared_components_count() const {
+            return _layout.shared_components_count();
         }
 
-        std::size_t chunk_capacity() const {
-            return _layout.chunk_capacity();
-        }
-
-        std::size_t entities_offset() const {
-            return _layout.entities_offset();
+        const std::vector<ComponentType> &shared_component_types() const {
+            return _layout.shared_component_types();
         }
 
         std::size_t entities_count() const {
             return _entities_count;
         }
 
-        std::size_t last_chunk_free_slots() const {
-            return _last_chunk_free_slots;
-        }
-
-        Entity get_entity(EntityPosInChunk pos) const {
-            return _layout.get_entities(_chunks[pos.chunk_index])[pos.index_in_chunk];
+        const ChunkLayout &layout() const {
+            return _layout;
         }
 
         void *get_component(EntityPosInChunk pos, std::size_t comp_index) {
-            return _layout.get_component(_chunks[pos.chunk_index], comp_index, pos.index_in_chunk);
+            return _layout.get_component(pos.chunk, comp_index, pos.index_in_chunk);
         }
 
+        Entity get_entity(EntityPosInChunk pos) const {
+            return _layout.get_entities(pos.chunk)[pos.index_in_chunk];
+        }
+
+        friend void transfer_component_data(EntityPosInChunk from, EntityPosInChunk to,
+                                            const std::vector<ComponentType> &transferred_components);
+
     private:
-        Chunk *_chunks = nullptr;
-        std::size_t _chunks_count = 0;
-        std::size_t _chunks_cp = 0;
+        ChunksData _chunks_data;
 
         ChunkLayout _layout;
+        ChunksMap _chunks_map;
         EntityChunkMapping *entities_mapping;
 
-        std::size_t _last_chunk_free_slots = 0;
         std::size_t _entities_count = 0;
 
         void reserve_chunks(std::size_t count);
-        void allocate_chunk();
         void deallocate_chunk(std::size_t chunk_index);
         void deallocate_last_chunk();
 
-        Id swap_ent_with_last_to_remove(EntityPosInChunk entity_pos);
+        Id swap_ent_with_to_remove(EntityPosInChunk removed_pos,
+                                   EntityPosInChunk last_pos);
     };
 
     class ArchetypesStorage {
@@ -192,6 +202,11 @@ namespace ecs {
             });
         }
 
+        template<Component... Cs, typename Fn>
+        void foreach(std::tuple<Cs...>, Fn &&f) const {
+            foreach<Cs...>(std::forward<Fn>(f));
+        }
+
         EntityChunkMapping *entities_mapping() const {
             return _mapping.get();
         }
@@ -209,6 +224,9 @@ namespace ecs {
         DynamicIdSetAnd query_mask(std::size_t components_count,
                                    const ComponentType *types) const;
     };
+
+    void transfer_component_data(EntityPosInChunk from, EntityPosInChunk to,
+                                 const std::vector<ComponentType> &transferred_components);
 }
 
 #endif //HIGH_SHIFT_ARCHETYPE_H

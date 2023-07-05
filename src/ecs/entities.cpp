@@ -1,7 +1,5 @@
 #include "ecs/entities.h"
 
-#include <immintrin.h>
-
 namespace ecs {
 
     Entity Entities::create(const std::vector <ComponentType> &types, const std::vector<void *> &data) {

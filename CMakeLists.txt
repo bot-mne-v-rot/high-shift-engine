@@ -21,7 +21,7 @@ file(GLOB_RECURSE ENGINE_SOURCES
         "${PROJECT_SOURCE_DIR}/src/*.cpp")
 
 include_directories(include)
-add_library(${PROJECT_NAME} STATIC ${ENGINE_SOURCES} include/render/lights.h)
+add_library(${PROJECT_NAME} STATIC ${ENGINE_SOURCES})
 add_executable(${TEST_TARGET} ${TEST_SOURCES})
 target_link_libraries(${TEST_TARGET} ${PROJECT_NAME})
 

@@ -20,6 +20,9 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     
+    - name: GLGF deps
+      run: sudo apt install xorg-dev
+    
     - name: Submodules
       run: git submodule update --init --recursive
 

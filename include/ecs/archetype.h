@@ -75,9 +75,15 @@ namespace ecs {
         }
 
     private:
+        // plain list of EntityPosInChunk
         std::vector<EntityPosInChunk> dense;
+
+        // inverse of `sparse`: mapping from positions in `dense` to entity ids
         std::vector<uint32_t> dense_ids;
+
+        // mapping from entity idd to positions in `dense`
         std::vector<uint32_t> sparse;
+
         IdSet present;
     };
 

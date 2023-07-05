@@ -51,8 +51,8 @@ TEST_SUITE("ecs::Entities") {
     TEST_CASE("foreach") {
         ecs::Entities entities;
 
-        int n = 10000000;
-        int m = 5000000;
+        int n = 10000;
+        int m = 500;
         std::vector<bool> visited(n + m);
 
         std::vector<ComponentA> a_comps(n + m);

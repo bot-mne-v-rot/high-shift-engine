@@ -162,7 +162,7 @@ namespace ecs {
          * });
          * @endcode
          *
-         * To get the entity list it as any argument.
+         * To get the entity, list it as any argument.
          * @example
          * @code
          * Entities.foreach([](Entity entity, const ComponentA &a, ComponentB &b) {

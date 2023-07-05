@@ -88,9 +88,6 @@ namespace render {
 
                     auto *shader_program = shader_loader.get_shader_program(renderer.shader_program_handle);
 
-
-
-
                     shader_program->use();
                     shader_program->set_mat4("projection", projection);
                     shader_program->set_mat4("view", view);
@@ -98,14 +95,14 @@ namespace render {
                     shader_program->set_vec3("viewPos", cam_transform.position);
 
                     int index = 0;
-                    ecs::foreach(dir_lights, [&] (const DirLight &dir_light) {
+                    entities.foreach([&] (const DirLight &dir_light) {
                         shader_program->set_dir_light(index, dir_light);
                         ++index;
                     });
                     shader_program->set_int("NrDirLights", index);
 
                     index = 0;
-                    ecs::joined_foreach(transforms, point_lights, [&] (const Transform &light_transform,
+                    entities.foreach([&] (const Transform &light_transform,
                             const PointLight &point_light) {
                         shader_program->set_point_light(index, light_transform.position, point_light);
                         ++index;
@@ -113,7 +110,7 @@ namespace render {
                     shader_program->set_int("NrPointLights", index);
 
                     index = 0;
-                    ecs::joined_foreach(transforms, spot_lights, [&] (const Transform &light_transform,
+                    entities.foreach([&] (const Transform &light_transform,
                             const SpotLight &spot_light) {
                         shader_program->set_spot_light(index, light_transform.position, spot_light);
                         ++index;

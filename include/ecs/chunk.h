@@ -7,7 +7,12 @@
 namespace ecs {
     static const std::size_t page_size = 4 * 1024; // 4 KiB
     static const std::size_t chunk_size = 16 * 1024; // 16 KiB
-    struct alignas(page_size) Chunk {
+
+    union alignas(page_size) Chunk {
+        struct Fields {
+            uint32_t chunk_index = 0;
+            uint16_t entities_count = 0;
+        } fields {};
         uint8_t data[chunk_size];
     };
 

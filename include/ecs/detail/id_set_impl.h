@@ -104,6 +104,10 @@ namespace ecs {
         if (!contains(id))
             ++sz;
 
+        insert_unsafe(id);
+    }
+
+    inline void IdSet::insert_unsafe(Id id) {
         for (auto &level : levels) {
             uint32_t pos = id & lower_bits;
             id >>= shift;

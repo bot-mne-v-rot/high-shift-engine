@@ -1,12 +1,9 @@
 #ifndef HIGH_SHIFT_LIGHTS_H
 #define HIGH_SHIFT_LIGHTS_H
 
-#include "ecs/storages/sparse_vec_storage.h"
-
 namespace render {
 
     struct DirLight {
-        using Storage = ecs::SparseVecStorage<DirLight>;
         glm::vec3 direction{0.0f, -1.0f, 0.0f};
 
         glm::vec3 ambient{0.2f, 0.2f, 0.2f};
@@ -15,7 +12,6 @@ namespace render {
     };
 
     struct PointLight {
-        using Storage = ecs::SparseVecStorage<PointLight>;
         float constant;
         float linear;
         float quadratic;
@@ -26,7 +22,6 @@ namespace render {
     };
 
     struct SpotLight {
-        using Storage = ecs::SparseVecStorage<SpotLight>;
         glm::vec3 direction;
         float cutOff;
         float outerCutOff;

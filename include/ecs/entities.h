@@ -5,6 +5,7 @@
 #include "ecs/archetype.h"
 #include "ecs/component.h"
 #include "ecs/id_set.h"
+#include "ecs/chunk_layout.h"
 
 namespace ecs {
 
@@ -161,7 +162,7 @@ namespace ecs {
          * });
          * @endcode
          *
-         * To get the entity list it as a first argument.
+         * To get the entity, list it as any argument.
          * @example
          * @code
          * Entities.foreach([](Entity entity, const ComponentA &a, ComponentB &b) {
@@ -200,38 +201,23 @@ namespace ecs {
         static constexpr uint32_t NO_ENTRY = UINT32_MAX;
 
         template<typename Fn, typename This, typename Ret, typename... Args>
-        requires(Component<std::remove_cvref_t<Args>> &&...)
         void foreach_functor(Fn &&functor, Ret (This::*)(Args...)) const {
-            foreach_impl<std::remove_reference_t<Args>...>(std::forward<Fn>(functor),
-                                                           std::make_index_sequence<sizeof...(Args)>());
+            foreach_impl<Args...>(std::forward<Fn>(functor));
         }
 
         template<typename Fn, typename This, typename Ret, typename... Args>
-        requires(Component<std::remove_cvref_t<Args>> &&...)
         void foreach_functor(Fn &&functor, Ret (This::*)(Args...) const) const {
-            foreach_impl<std::remove_reference_t<Args>...>(std::forward<Fn>(functor),
-                                                           std::make_index_sequence<sizeof...(Args)>());
+            foreach_impl<Args...>(std::forward<Fn>(functor));
         }
 
-        template<typename Fn, typename This, typename Ret, typename... Args>
-        requires(Component<std::remove_cvref_t<Args>> &&...)
-        void foreach_functor(Fn &&functor, Ret (This::*)(Entity, Args...)) const {
-            foreach_with_entities_impl<std::remove_reference_t<Args>...>(std::forward<Fn>(functor),
-                                                                         std::make_index_sequence<sizeof...(Args)>());
-        }
+        template<typename... Cmps, typename Fn>
+        void foreach_impl(Fn &&f) const;
 
-        template<typename Fn, typename This, typename Ret, typename... Args>
-        requires(Component<std::remove_cvref_t<Args>> &&...)
-        void foreach_functor(Fn &&functor, Ret (This::*)(Entity, Args...) const) const {
-            foreach_with_entities_impl<std::remove_reference_t<Args>...>(std::forward<Fn>(functor),
-                                                                         std::make_index_sequence<sizeof...(Args)>());
-        }
+        Entity get_free_entity();
+        void get_free_entities(std::size_t entities_count, Entity *entities);
 
-        template<typename... Cmps, typename Fn, std::size_t... Indices>
-        void foreach_impl(Fn &&f, std::index_sequence<Indices...> indices) const;
-
-        template<typename... Cmps, typename Fn, std::size_t... Indices>
-        void foreach_with_entities_impl(Fn &&f, std::index_sequence<Indices...> indices) const;
+        Entity pop_free_list();
+        void push_free_list(Entity entity);
     };
 }
 

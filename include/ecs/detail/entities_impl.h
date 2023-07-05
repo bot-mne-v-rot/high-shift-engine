@@ -22,46 +22,6 @@ namespace ecs {
             new(comp) Comp(std::forward<C>(cmp));
         }
 
-        template<typename... Cmps, typename Fn, std::size_t... Indices>
-        void iterate_chunk(Fn &&f,
-                           Chunk *chunk, size_t entities_count,
-                           const std::size_t *offsets,
-                           std::index_sequence<Indices...>) {
-            uint8_t *ptrs[] = {
-                    (chunk->data + offsets[Indices])...
-            };
-
-            for (size_t j = 0; j < entities_count; ++j)
-                f((((Cmps *) ptrs[Indices])[j])...);
-        }
-
-        template<typename... Cmps, typename Fn, std::size_t... Indices>
-        void iterate_chunk_with_entities(Fn &&f,
-                                         Chunk *chunk, size_t entities_count,
-                                         std::size_t entities_offset,
-                                         const std::size_t *offsets,
-                                         std::index_sequence<Indices...>) {
-            Entity *entities = (Entity *) (chunk->data + entities_offset);
-            uint8_t *ptrs[] = {
-                    (chunk->data + offsets[Indices])...
-            };
-
-            for (size_t j = 0; j < entities_count; ++j)
-                f(entities[j], (((Cmps *) ptrs[Indices])[j])...);
-        }
-
-        inline void transfer_entity(EntityPosInChunk from, EntityPosInChunk to,
-                                    const std::vector<ComponentType> &transferred_components) {
-            for (ComponentType component : transferred_components) {
-                std::size_t from_index = detail::get_component_index_in_archetype(from.archetype, component);
-                std::size_t to_index = detail::get_component_index_in_archetype(to.archetype, component);
-
-                memcpy(to.archetype->get_component(to, to_index),
-                       from.archetype->get_component(from, from_index),
-                       component.size);
-            }
-        }
-
         inline EntityPosInChunk transfer_entity(Entity entity,
                                                 EntityPosInChunk old_entity_pos,
                                                 ArchetypesStorage &archetypes,
@@ -70,7 +30,7 @@ namespace ecs {
             Archetype *new_archetype = archetypes.get_or_insert(new_components);
             EntityPosInChunk new_entity_pos = new_archetype->allocate_entity(entity);
 
-            detail::transfer_entity(old_entity_pos, new_entity_pos, transferred_components);
+            transfer_component_data(old_entity_pos, new_entity_pos, transferred_components);
 
             old_entity_pos.archetype->deallocate_entity(old_entity_pos);
             if (old_entity_pos.archetype->entities_count() == 1)
@@ -85,15 +45,119 @@ namespace ecs {
             std::size_t comp_index = detail::get_component_index_in_archetype<Comp>(entity_pos.archetype);
             return *(C *) entity_pos.archetype->get_component(entity_pos, comp_index);
         }
+
+        template<typename, typename>
+        struct ComponentExtractor;
+
+        template<PlainComponent Comp, typename Ref>
+        struct ComponentExtractor<Comp, Ref> {
+            explicit ComponentExtractor(const Archetype *archetype) {
+                std::size_t comp_index = archetype->layout().get_component_index<Comp>();
+                offset = archetype->layout().component_offsets()[comp_index];
+            }
+
+            void update(Chunk *chunk) {
+                array = (Comp * )(chunk->data + offset);
+            }
+
+            Ref get(std::size_t i) {
+                return array[i];
+            }
+
+            std::size_t offset;
+            Comp *array;
+        };
+
+        template<typename Ref>
+        struct ComponentExtractor<Entity, Ref> {
+            static_assert(!std::is_reference_v<Ref> || std::is_const_v<std::remove_reference_t<Ref>>,
+                          "You can't mutate entity within foreach.");
+
+            explicit ComponentExtractor(const Archetype *archetype) {
+                offset = archetype->layout().entities_offset();
+            }
+
+            void update(Chunk *chunk) {
+                entities = (Entity *) (chunk->data + offset);
+            }
+
+            Ref get(std::size_t i) {
+                return entities[i];
+            }
+
+            std::size_t offset;
+            Entity *entities;
+        };
+
+//        template<SharedComponent Comp, typename Ref>
+//        struct ComponentExtractor<Comp, Ref> {
+//            explicit ComponentExtractor(const Archetype *archetype) {
+//                std::size_t comp_index = archetype->layout().get_shared_component_index<Comp>();
+//                archetype->layout().shared_components_offset()
+//                offset = archetype->layout().shared_components_offset()[comp_index];
+//            }
+//
+//            void update(Chunk *chunk) {
+//                comp = (Comp *) (chunk->data + offset);
+//            }
+//
+//            Ref get(std::size_t) {
+//                return array[i];
+//            }
+//
+//            std::size_t offset;
+//            Comp *comp;
+//        };
+
+        template<typename... Extractors, typename Fn, std::size_t... Indices>
+        void iterate_chunk(Fn &&f,
+                           Chunk *chunk,
+                           std::tuple<Extractors...> extractors,
+                           std::index_sequence<Indices...>) {
+            (std::get<Indices>(extractors).update(chunk), ...);
+
+            for (size_t j = 0; j < chunk->fields.entities_count; ++j)
+                f(std::get<Indices>(extractors).get(j)...);
+        }
+
+        template<PlainComponent...>
+        struct PlainComponentsArgsPack {};
+
+        template<SharedComponent...>
+        struct SharedComponentsArgsPack {};
+
+        template<typename>
+        struct ComponentPredicate : public std::false_type {};
+        template<Component C>
+        struct ComponentPredicate<C> : public std::true_type {};
+
+        template<typename>
+        struct PlainComponentPredicate : public std::false_type {};
+        template<PlainComponent C>
+        struct PlainComponentPredicate<C> : public std::true_type {};
+
+        template<typename>
+        struct SharedComponentPredicate : public std::false_type {};
+        template<SharedComponent C>
+        struct SharedComponentPredicate<C> : public std::true_type {};
+
+        template<typename... Args>
+        using FilterComponents = detail::filter<ComponentPredicate, Args...>;
+
+        template<typename... Args>
+        using FilterPlainComponents = detail::filter<PlainComponentPredicate, Args...>;
+
+        template<typename... Args>
+        using FilterSharedComponents = detail::filter<SharedComponentPredicate, Args...>;
     }
 
     template<typename... Cmps>
     Entity Entities::create(Cmps &&...cmps)
-    requires(Component<std::decay_t<Cmps>> && ...) {
-        ComponentType types[] {
-            ComponentType::create<std::remove_cvref_t<Cmps>>()...
+    requires(Component <std::decay_t<Cmps>> &&...) {
+        ComponentType types[]{
+                ComponentType::create<std::remove_cvref_t<Cmps>>()...
         };
-        void *data[] {
+        void *data[]{
                 &cmps...
         };
         return create(sizeof...(Cmps), types, data);
@@ -133,8 +197,9 @@ namespace ecs {
     }
 
     template<typename... Cmps>
-    std::tuple<Cmps &...> Entities::get_components(Entity entity) const
-    requires(Component <std::remove_const_t<Cmps>> &&...) {
+    std::tuple<Cmps &...>
+    Entities::get_components(Entity entity)
+    const requires(Component <std::remove_const_t<Cmps>> &&...) {
         EntityChunkMapping &mapping = *archetypes.entities_mapping();
         EntityPosInChunk entity_pos = mapping[entity.id];
         return std::forward_as_tuple(
@@ -142,64 +207,21 @@ namespace ecs {
         );
     }
 
-    template<typename... Cmps, typename Fn, std::size_t... Indices>
-    void Entities::foreach_impl(Fn &&f, std::index_sequence<Indices...> indices) const {
-        archetypes.query<std::remove_const_t<Cmps>...>([&](Archetype *arch) {
-            std::size_t comp_indices[] = {
-                    detail::get_component_index_in_archetype<std::remove_const_t<Cmps>>(arch)...
-            };
-            std::size_t offsets[] = {
-                    arch->component_offsets()[comp_indices[Indices]]...
-            };
+    template<typename... Cmps, typename Fn>
+    void Entities::foreach_impl(Fn &&f) const {
+        auto components = typename detail::FilterComponents<std::remove_cvref_t<Cmps>...>::type();
+        archetypes.foreach(components, [&](Archetype *arch) {
+            auto extractors = std::make_tuple(
+                    detail::ComponentExtractor<std::remove_cvref_t<Cmps>, Cmps>(arch)...
+            );
 
+            auto indices = std::make_index_sequence<sizeof...(Cmps)>();
             std::size_t chunks_count = arch->chunks_count();
-            Chunk *chunk = arch->chunks();
+            Chunk **chunks = arch->chunks();
 
-            std::size_t chunk_capacity = arch->chunk_capacity();
-            for (std::size_t i = 0; i + 1 < chunks_count; ++i) {
-                detail::iterate_chunk<Cmps...>(std::forward<Fn>(f),
-                                               chunk, chunk_capacity,
-                                               offsets, indices);
-                ++chunk;
-            }
-            if (chunks_count) {
-                std::size_t last_chunk_entities_count = chunk_capacity - arch->last_chunk_free_slots();
-                detail::iterate_chunk<Cmps...>(std::forward<Fn>(f),
-                                               chunk, last_chunk_entities_count,
-                                               offsets, indices);
-            }
-        });
-    }
-
-    template<typename... Cmps, typename Fn, std::size_t... Indices>
-    void Entities::foreach_with_entities_impl(Fn &&f, std::index_sequence<Indices...> indices) const {
-        archetypes.query<std::remove_const_t<Cmps>...>([&](Archetype *arch) {
-            std::size_t comp_indices[] = {
-                    detail::get_component_index_in_archetype<std::remove_const_t<Cmps>>(arch)...
-            };
-            std::size_t offsets[] = {
-                    arch->component_offsets()[comp_indices[Indices]]...
-            };
-            std::size_t entities_offset = arch->entities_offset();
-
-            std::size_t chunks_count = arch->chunks_count();
-            Chunk *chunk = arch->chunks();
-
-            std::size_t chunk_capacity = arch->chunk_capacity();
-            for (std::size_t i = 0; i + 1 < chunks_count; ++i) {
-                detail::iterate_chunk_with_entities<Cmps...>(std::forward<Fn>(f),
-                                                             chunk, chunk_capacity,
-                                                             entities_offset, offsets,
-                                                             indices);
-                ++chunk;
-            }
-            if (chunks_count) {
-                std::size_t last_chunk_entities_count = chunk_capacity - arch->last_chunk_free_slots();
-                detail::iterate_chunk_with_entities<Cmps...>(std::forward<Fn>(f),
-                                                             chunk, last_chunk_entities_count,
-                                                             entities_offset, offsets,
-                                                             indices);
-            }
+            for (std::size_t i = 0; i < chunks_count; ++i)
+                detail::iterate_chunk(std::forward<Fn>(f), chunks[i],
+                                      extractors, indices);
         });
     }
 
